@@ -30,6 +30,7 @@ gb-hid-y := hid.o
 gb-es2-y := es2.o
 gb-db3-y := db3-platform.o
 gb-audio-codec-y := audio-codec.o
+gb-audio-y := audio.o
 
 obj-m += greybus.o
 obj-m += gb-phy.o
@@ -42,6 +43,9 @@ obj-m += gb-raw.o
 obj-m += gb-es2.o
 obj-m += gb-db3.o
 obj-m += gb-audio-codec.o
+ifeq ($(CONFIG_SND_SOC_DYNAMIC_DAILINK),y)
+ obj-m += gb-audio.o
+endif
 
 KERNELVER		?= $(shell uname -r)
 KERNELDIR 		?= /lib/modules/$(KERNELVER)/build

@@ -66,6 +66,38 @@ static const u8 gbcodec_reg_defaults[GBCODEC_REG_COUNT] = {
 	GBCODEC_APB2_MUX_REG_DEFAULT,
 };
 
+struct gbaudio_priv {
+	int module_count;
+#ifdef CONFIG_DEBUG_FS
+	struct dentry *debugfs_module_root;
+#endif
+};
+
+struct gbaudio_module_info {
+	/* need to share this info to above user space */
+	int vid;
+	int pid;
+	int slot;
+	int type;
+	char vstr[NAME_SIZE];
+	char pstr[NAME_SIZE];
+	int mgmt_cport;
+	int data_cport;
+
+	/* codec device data */
+	struct platform_device *pdev;
+	int index;
+	char codec_name[NAME_SIZE];
+	void *codec_drvdata;
+
+	/* dai link data */
+	char card_name[NAME_SIZE];
+	struct snd_soc_dai_link *dai_link;
+	int num_dai_links;
+
+	struct list_head list;
+};
+
 struct gbaudio_codec_info {
 	struct snd_soc_codec *codec;
 
