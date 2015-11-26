@@ -29,7 +29,7 @@ gb-raw-y := raw.o
 gb-hid-y := hid.o
 gb-es2-y := es2.o
 gb-db3-y := db3-platform.o
-gb-audio-codec-y := audio-codec.o
+gb-audio-codec-y := audio_codec.o
 gb-audio-y := audio.o
 
 obj-m += greybus.o
