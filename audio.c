@@ -15,7 +15,7 @@
 
 static LIST_HEAD(module_list);
 
-#define NUM_MODULES	1
+#define GB_AUDIO_MGMT_DRIVER_NAME		"gb_audio_mgmt"
 
 static void gbaudio_remove_dailink(struct gbaudio_module_info *info)
 {
@@ -123,99 +123,117 @@ int gbaudio_unregister_module(struct gbaudio_module_info *gbmodule)
 	return 0;
 }
 
-static struct snd_soc_dai_link gbaudio_dailink[] = {
-	{
-		.name = "GB PRI_MI2S_RX",
-		.stream_name = "Primary MI2S Playback",
-		.platform_name = "qcom,msm-pcm-routing.41",
-		.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.205",
-		.codec_name = "gbaudio-codec.0",
-		.codec_dai_name = "gbcodec_pcm.0",
-		.no_pcm = 1,
-		.ignore_suspend = 1,
-	},
+static struct snd_soc_dai_link gbaudio_dailink = {
+	.name = "GB PRI_MI2S_RX",
+	.stream_name = "Primary MI2S Playback",
+	.platform_name = "qcom,msm-pcm-routing.41",
+	.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.205",
+	.codec_name = "gbaudio-codec.0",
+	.codec_dai_name = "gbcodec_pcm.0",
+	.no_pcm = 1,
+	.ignore_suspend = 1,
 };
 
-static int gbaudio_probe(struct platform_device *pdev)
+static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 {
-	int ret, i;
-	struct gbaudio_priv *gbaudio;
-	struct gbaudio_module_info *gbmodule[NUM_MODULES];
-	/*
-	struct device_node *np;
-	struct device *cdev = &pdev->dev;
-	*/
-
-	gbaudio = devm_kzalloc(&pdev->dev, sizeof(struct gbaudio_priv),
-			      GFP_KERNEL);
-	if (!gbaudio)
-		return -ENOMEM;
-
-	platform_set_drvdata(pdev, gbaudio);
+	int ret, index;
+	struct gbaudio_module_info *gbmodule;
+	char name[NAME_SIZE], codec_name[NAME_SIZE], codec_dai_name[NAME_SIZE];
 
 	/* register module(s) */
-
-	for (i = 0; i < NUM_MODULES; i++) {
-		gbmodule[i] = devm_kzalloc(&pdev->dev,
-					   sizeof(struct gbaudio_module_info),
-					   GFP_KERNEL);
-	if (!gbmodule[i])
+	gbmodule = kzalloc(sizeof(struct gbaudio_module_info), GFP_KERNEL);
+	if (!gbmodule)
 		return -ENOMEM;
 
 	/* assumption:
 	 * each module can be used with single sound card at a time
 	 */
-	strlcpy(gbmodule[i]->codec_name, "gbaudio-codec", NAME_SIZE);
-	strlcpy(gbmodule[i]->card_name, "msm8994-tomtom-mtp-snd-card",
-		NAME_SIZE);
-	gbmodule[i]->index = i;
-	gbmodule[i]->mgmt_cport = i;
-	gbmodule[i]->dai_link = &gbaudio_dailink[i];
-	gbmodule[i]->num_dai_links = 1;
+	index = connection->bundle->id;
+	snprintf(name, NAME_SIZE, "%s.%d", "greybus-audio-codec", index);
+	snprintf(codec_name, NAME_SIZE, "%s.%d", "gbaudio-codec", index);
+	snprintf(codec_dai_name, NAME_SIZE, "%s.%d", "gbcodec_pcm", index);
+
+	strlcpy(gbmodule->codec_name, "gbaudio-codec", NAME_SIZE);
+	strlcpy(gbmodule->card_name, "msm8994-tomtom-mtp-snd-card", NAME_SIZE);
+	gbmodule->index = index;
+	gbmodule->mgmt_cport = index;
+	gbmodule->dai_link = &gbaudio_dailink;
+	gbmodule->num_dai_links = 1;
 
 	/* register module1 */
-	ret = gbaudio_register_module(gbmodule[i]);
+	ret = gbaudio_register_module(gbmodule);
 	if (ret) {
-		dev_err(&pdev->dev, "Module initialization failed, %d\n", ret);
+		dev_err(&connection->bundle->dev,
+			"Module initialization failed, %d\n", ret);
 		return ret;
-	}
-	gbaudio->module_count++;
 	}
 
 	return 0;
 }
 
-static int gbaudio_remove(struct platform_device *pdev)
+static void gb_audio_mgmt_connection_exit(struct gb_connection *connection)
 {
 	struct gbaudio_module_info *module, *_module;
-	struct gbaudio_priv *gbaudio = platform_get_drvdata(pdev);
 
 	/* stop active streams */
 
 	/* unregister all modules */
 	list_for_each_entry_safe(module, _module, &module_list, list) {
-		gbaudio_unregister_module(module);
-		gbaudio->module_count--;
+		if (module->mgmt_cport == connection->bundle->id) {
+			gbaudio_unregister_module(module);
+			kfree(module);
+			break;
+		}
 	}
+}
+
+static int gb_audio_mgmt_report_event_recv(u8 type, struct gb_operation *op)
+{
+	struct gb_connection *connection = op->connection;
+
+	dev_warn(&connection->bundle->dev, "Audio Event received\n");
 
 	return 0;
 }
 
-static const struct of_device_id gbaudio_of_match[] = {
-	{ .compatible = "greybus,audio", },
-	{},
+static struct gb_protocol gb_audio_mgmt_protocol = {
+	.name			= GB_AUDIO_MGMT_DRIVER_NAME,
+	.id			= GREYBUS_PROTOCOL_AUDIO_MGMT,
+	.major			= 0,
+	.minor			= 1,
+	.connection_init	= gb_audio_mgmt_connection_init,
+	.connection_exit	= gb_audio_mgmt_connection_exit,
+	.request_recv		= gb_audio_mgmt_report_event_recv,
 };
 
-static struct platform_driver gbaudio_driver = {
-	.driver		= {
-		.name		= "greybus-audio",
-		.owner		= THIS_MODULE,
-		.of_match_table = gbaudio_of_match,
-	},
-	.probe		= gbaudio_probe,
-	.remove		= gbaudio_remove,
-};
-module_platform_driver(gbaudio_driver);
+/*
+ * This is the basic hook get things initialized and registered w/ gb
+ */
+
+static int __init gb_audio_protocol_init(void)
+{
+	int ret;
+
+	ret = gb_protocol_register(&gb_audio_mgmt_protocol);
+	if (ret)
+		pr_err("Can't register audio mgmt protocol driver: %d\n", -ret);
+
+	return ret;
+}
+
+static void __exit gb_audio_protocol_exit(void)
+{
+	struct gbaudio_module_info *module, *_module;
+
+	list_for_each_entry_safe(module, _module, &module_list, list) {
+			gbaudio_unregister_module(module);
+			kfree(module);
+	}
+	gb_protocol_deregister(&gb_audio_mgmt_protocol);
+}
+
+module_init(gb_audio_protocol_init);
+module_exit(gb_audio_protocol_exit);
 
 MODULE_DESCRIPTION("Greybus Audio protocol driver");
 MODULE_AUTHOR("Vaibhav Agarwal <vaibhav.agarwal@linaro.org>");

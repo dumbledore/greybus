@@ -171,21 +171,21 @@ static struct snd_soc_dai_ops gbcodec_dai_ops = {
 };
 
 static struct snd_soc_dai_driver gbcodec_dai = {
-		.playback = {
-			.stream_name = "APBridgeA1 Playback",
-			.channels_min = 1,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_44100,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
-		},
-		.capture = {
-			.stream_name = "APBridgeA1 Capture",
-			.channels_min = 2,
-			.channels_max = 2,
-			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_44100,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
-		},
-		.ops = &gbcodec_dai_ops,
+	.playback = {
+		.stream_name = "APBridgeA1 Playback",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_44100,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.capture = {
+		.stream_name = "APBridgeA1 Capture",
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_44100,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
+	},
+	.ops = &gbcodec_dai_ops,
 };
 
 static int gbcodec_probe(struct snd_soc_codec *codec)
