@@ -15,7 +15,7 @@
 
 static LIST_HEAD(module_list);
 
-#define NUM_MODULES	2
+#define NUM_MODULES	1
 
 static void gbaudio_remove_dailink(struct gbaudio_module_info *info)
 {
@@ -125,22 +125,14 @@ int gbaudio_unregister_module(struct gbaudio_module_info *gbmodule)
 
 static struct snd_soc_dai_link gbaudio_dailink[] = {
 	{
-		.name = "greybus-audio-codec.0",
-		.stream_name = "greybus-audio-pcm",
-		.platform_name = "tegra30-i2s.1",
-		.cpu_dai_name = "tegra30-i2s.1",
+		.name = "GB PRI_MI2S_RX",
+		.stream_name = "Primary MI2S Playback",
+		.platform_name = "qcom,msm-pcm-routing.41",
+		.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.205",
 		.codec_name = "gbaudio-codec.0",
 		.codec_dai_name = "gbcodec_pcm.0",
-		.ignore_pmdown_time = 1,
-	},
-	{
-		.name = "greybus-audio-codec.1",
-		.stream_name = "greybus-audio-pcm",
-		.platform_name = "tegra30-i2s.1",
-		.cpu_dai_name = "tegra30-i2s.1",
-		.codec_name = "gbaudio-codec.1",
-		.codec_dai_name = "gbcodec_pcm.1",
-		.ignore_pmdown_time = 1,
+		.no_pcm = 1,
+		.ignore_suspend = 1,
 	},
 };
 
@@ -149,6 +141,10 @@ static int gbaudio_probe(struct platform_device *pdev)
 	int ret, i;
 	struct gbaudio_priv *gbaudio;
 	struct gbaudio_module_info *gbmodule[NUM_MODULES];
+	/*
+	struct device_node *np;
+	struct device *cdev = &pdev->dev;
+	*/
 
 	gbaudio = devm_kzalloc(&pdev->dev, sizeof(struct gbaudio_priv),
 			      GFP_KERNEL);
@@ -170,7 +166,8 @@ static int gbaudio_probe(struct platform_device *pdev)
 	 * each module can be used with single sound card at a time
 	 */
 	strlcpy(gbmodule[i]->codec_name, "gbaudio-codec", NAME_SIZE);
-	strlcpy(gbmodule[i]->card_name, "tegra-rt5639", NAME_SIZE);
+	strlcpy(gbmodule[i]->card_name, "msm8994-tomtom-mtp-snd-card",
+		NAME_SIZE);
 	gbmodule[i]->index = i;
 	gbmodule[i]->mgmt_cport = i;
 	gbmodule[i]->dai_link = &gbaudio_dailink[i];
@@ -204,10 +201,16 @@ static int gbaudio_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id gbaudio_of_match[] = {
+	{ .compatible = "greybus,audio", },
+	{},
+};
+
 static struct platform_driver gbaudio_driver = {
 	.driver		= {
 		.name		= "greybus-audio",
 		.owner		= THIS_MODULE,
+		.of_match_table = gbaudio_of_match,
 	},
 	.probe		= gbaudio_probe,
 	.remove		= gbaudio_remove,
