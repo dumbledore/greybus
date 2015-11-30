@@ -59,6 +59,7 @@ MODULE_DEVICE_TABLE(usb, id_table);
 /* vendor request to time the latency of messages on a given cport */
 #define REQUEST_LATENCY_TAG_EN	0x06
 #define REQUEST_LATENCY_TAG_DIS	0x07
+#define REQUEST_AUDIO_APBRIDGEA	0x08
 
 /*
  * @endpoint: bulk in endpoint for CPort data
@@ -823,6 +824,22 @@ static int apb_get_cport_count(struct usb_device *udev)
 out:
 	kfree(cport_count);
 	return retval;
+}
+
+int gb_audio_apbridgea_io(struct gb_connection *connection, __u16 i2s_port,
+			  __u16 cportid, void *req, __u16 size, bool tx)
+{
+	struct gb_host_device *hd = connection->hd;
+	struct es2_ap_dev *es2 = hd_to_es2(hd);
+	struct usb_device *udev = es2->usb_dev;
+	__u8 dir;
+
+	dir = tx ? USB_DIR_OUT : USB_DIR_IN;
+
+	return usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+			       REQUEST_AUDIO_APBRIDGEA,
+			       dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
+			       cportid, i2s_port, req, size, ES2_TIMEOUT);
 }
 
 /*
