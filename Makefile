@@ -33,6 +33,7 @@ gb-arche-apb-ctrl-y := arche-apb-ctrl.o
 gb-audio-codec-y := audio_codec.o
 gb-camera-y := camera.o
 gb-audio-gb-y := audio_gb.o
+gb-audio-apbridgea-y := audio_apbridgea.o
 
 obj-m += greybus.o
 obj-m += gb-phy.o
@@ -48,6 +49,7 @@ obj-m += gb-arche-apb-ctrl.o
 obj-m += gb-audio-codec.o
 obj-m += gb-camera.o
 obj-m += gb-audio-gb.o
+obj-m += gb-audio-apbridgea.o
 
 KERNELVER		?= $(shell uname -r)
 KERNELDIR 		?= /lib/modules/$(KERNELVER)/build
