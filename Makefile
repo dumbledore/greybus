@@ -34,6 +34,8 @@ gb-audio-codec-y := audio_codec.o
 gb-camera-y := camera.o
 gb-audio-gb-y := audio_gb.o
 gb-audio-apbridgea-y := audio_apbridgea.o
+gb-audio-manager-y += gb_audio_manager.o
+gb-audio-manager-y += gb_audio_manager_module.o
 
 obj-m += greybus.o
 obj-m += gb-phy.o
@@ -50,6 +52,7 @@ obj-m += gb-audio-codec.o
 obj-m += gb-camera.o
 obj-m += gb-audio-gb.o
 obj-m += gb-audio-apbridgea.o
+obj-m += gb-audio-manager.o
 
 KERNELVER		?= $(shell uname -r)
 KERNELDIR 		?= /lib/modules/$(KERNELVER)/build
@@ -90,6 +93,12 @@ ccflags-y := -Wall
 
 # needed for trace events
 ccflags-y += -I$(src)
+
+GB_AUDIO_MANAGER_SYSFS ?= false
+ifeq ($(GB_AUDIO_MANAGER_SYSFS),true)
+gb-audio-manager-y += gb_audio_manager_sysfs.o
+ccflags-y += -DGB_AUDIO_MANAGER_SYSFS
+endif
 
 all: module
 
