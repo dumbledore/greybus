@@ -37,12 +37,26 @@ int gbaudio_register_module(struct gbaudio_module_info *info)
 	struct gbaudio_codec_info *gbcodec;
 	struct snd_soc_dai_link *dai_link = info->dai_link;
 	char prefix_name[NAME_SIZE], codec_name[NAME_SIZE];
+	struct gb_audio_topology *topology;
 
 	/* register platform device for Module 0*/
 	pdev = platform_device_register_simple(info->codec_name, info->index,
 					       NULL, 0);
 	if (!pdev)
 		return -ENOMEM;
+
+	ret = gb_audio_gb_get_topology(info->mgmt_connection, &topology);
+	if (ret)
+		return ret;
+
+#if 1 /* TODO: Remove when no longer useful */
+	dev_info(&pdev->dev, "num_dais: %hhu\n", topology->num_dais);
+	dev_info(&pdev->dev, "num_controls: %hhu\n", topology->num_controls);
+	dev_info(&pdev->dev, "num_widgets: %hhu\n", topology->num_widgets);
+	dev_info(&pdev->dev, "num_routes: %hhu\n", topology->num_routes);
+
+	/* TODO: Remember to 'kfree(topology);' when done with it */
+#endif
 
 	info->pdev = pdev;
 	udelay(1000);
@@ -159,6 +173,7 @@ static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 	dai->codec_dai_name = codec_dai_name;
 	gbmodule->index = index;
 	gbmodule->mgmt_cport = connection->hd_cport_id;
+	gbmodule->mgmt_connection = connection;
 	gbmodule->dai_link = dai;
 	gbmodule->num_dai_links = 1;
 

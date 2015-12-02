@@ -85,7 +85,9 @@ struct gbaudio_module_info {
 	char vstr[NAME_SIZE];
 	char pstr[NAME_SIZE];
 	int mgmt_cport;
-	int data_cport;
+	struct gb_connection *mgmt_connection;
+	int data_cport; /* TODO: should have list of data connection info */
+	struct gb_connection *data_connection;
 
 	/* codec device data */
 	struct platform_device *pdev;
