@@ -10,6 +10,7 @@
 
 #include "greybus.h"
 #include "greybus_protocols.h"
+#include "operation.h"
 
 
 /* XXX: Caller must kfree the topology data */
