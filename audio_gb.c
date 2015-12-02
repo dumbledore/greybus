@@ -19,17 +19,17 @@ int gb_audio_gb_get_topology(struct gb_connection *connection,
 {
 	struct gb_audio_get_topology_size_response size_resp;
 	struct gb_audio_topology *topo;
-	int size, ret;
+	uint16_t size;
+	int ret;
 
 	ret = gb_operation_sync(connection, GB_AUDIO_TYPE_GET_TOPOLOGY_SIZE,
 				NULL, 0, &size_resp, sizeof(size_resp));
 	if (ret)
 		return ret;
 
-	if (!size_resp.size)
+	size = le16_to_cpu(size_resp.size);
+	if (size < sizeof(*topo))
 		return -ENODATA;
-
-	size = sizeof(struct gb_audio_get_topology_response) + size_resp.size;
 
 	topo = kzalloc(size, GFP_KERNEL);
 	if (!topo)
