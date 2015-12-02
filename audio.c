@@ -140,8 +140,8 @@ int gbaudio_unregister_module(struct gbaudio_module_info *gbmodule)
 static struct snd_soc_dai_link gbaudio_dailink = {
 	.name = "GB PRI_MI2S_RX",
 	.stream_name = "Primary MI2S Playback",
-	.platform_name = "qcom,msm-pcm-routing.41",
-	.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.204",
+	.platform_name = "msm-pcm-routing",
+	.cpu_dai_name = "msm-dai-q6-mi2s.0",
 	.no_pcm = 1,
 	.ignore_suspend = 1,
 };
@@ -153,11 +153,68 @@ static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 	struct snd_soc_dai_link *dai;
 	char codec_name[NAME_SIZE];
 	char codec_dai_name[NAME_SIZE];
+	char card_name[NAME_SIZE] = "msm8994-tomtom-mtp-snd-card";
+        struct device_node *np;
+	struct snd_soc_card *card;
+        struct device *pdev = &connection->bundle->dev;
+        struct device *cdev;
 
 	/* register module(s) */
 	gbmodule = kzalloc(sizeof(struct gbaudio_module_info), GFP_KERNEL);
 	if (!gbmodule)
 		return -ENOMEM;
+
+	dai = &gbaudio_dailink;
+	card = snd_soc_get_card(card_name);
+	if (!card) {
+		dev_err(pdev, "Unable to find %s soc card\n",
+			card_name);
+		return -ENODEV;
+	}
+	cdev = card->dev;
+
+	/* populate cpu_of_node for snd card dai links */
+	if (dai->cpu_dai_name && !dai->cpu_of_node) {
+                index = of_property_match_string(cdev->of_node,
+                                                 "asoc-cpu-names",
+                                                 dai->cpu_dai_name);
+		if (index < 0) {
+			dev_err(pdev, "No match found for cpu_dai name: %s\n",
+				dai->cpu_dai_name);
+                        return -ENODEV;
+		}
+		np = of_parse_phandle(cdev->of_node, "asoc-cpu",
+				      index);
+		if (!np) {
+			dev_err(pdev, "retrieving phandle for cpu dai %s failed\n",
+				dai->cpu_dai_name);
+			return -ENODEV;
+		}
+		dai->cpu_of_node = np;
+		dai->cpu_dai_name = NULL;
+	}
+
+	/* populate platform_of_node for snd card dai links */
+	if (dai->platform_name && !dai->platform_of_node) {
+		index = of_property_match_string(cdev->of_node,
+						 "asoc-platform-names",
+						 dai->platform_name);
+		if (index < 0) {
+			dev_err(pdev, "No match found for platform name: %s\n",
+				dai->platform_name);
+                        return -ENODEV;
+		}
+		np = of_parse_phandle(cdev->of_node, "asoc-platform",
+				      index);
+		if (!np) {
+			dev_err(pdev,
+				"retrieving phandle for platform %s failed\n",
+				dai->platform_name);
+                        return -ENODEV;
+		}
+		dai->platform_of_node = np;
+		dai->platform_name = NULL;
+	}
 
 	/* assumption:
 	 * each module can be used with single sound card at a time
@@ -167,8 +224,7 @@ static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 	snprintf(codec_dai_name, NAME_SIZE, "%s.%d", "gbcodec_pcm", index);
 
 	strlcpy(gbmodule->codec_name, "gbaudio-codec", NAME_SIZE);
-	strlcpy(gbmodule->card_name, "msm8994-tomtom-mtp-snd-card", NAME_SIZE);
-	dai = &gbaudio_dailink;
+	strlcpy(gbmodule->card_name, card_name, NAME_SIZE);
 	dai->codec_name = codec_name;
 	dai->codec_dai_name = codec_dai_name;
 	gbmodule->index = index;
@@ -180,8 +236,7 @@ static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 	/* register module1 */
 	ret = gbaudio_register_module(gbmodule);
 	if (ret) {
-		dev_err(&connection->bundle->dev,
-			"Module initialization failed, %d\n", ret);
+		dev_err(pdev, "Module initialization failed, %d\n", ret);
 		return ret;
 	}
 
