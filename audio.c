@@ -141,7 +141,7 @@ static struct snd_soc_dai_link gbaudio_dailink = {
 	.name = "GB PRI_MI2S_RX",
 	.stream_name = "Primary MI2S Playback",
 	.platform_name = "qcom,msm-pcm-routing.41",
-	.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.205",
+	.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.204",
 	.no_pcm = 1,
 	.ignore_suspend = 1,
 };
