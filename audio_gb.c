@@ -46,6 +46,7 @@ int gb_audio_gb_get_topology(struct gb_connection *connection,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_get_topology);
 
 int gb_audio_gb_get_control(struct gb_connection *connection,
 			    uint8_t control_id, uint8_t index,
@@ -67,6 +68,7 @@ int gb_audio_gb_get_control(struct gb_connection *connection,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_get_control);
 
 int gb_audio_gb_set_control(struct gb_connection *connection,
 			    uint8_t control_id, uint8_t index,
@@ -81,6 +83,7 @@ int gb_audio_gb_set_control(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_SET_CONTROL,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_set_control);
 
 int gb_audio_gb_enable_widget(struct gb_connection *connection,
 			      uint8_t widget_id)
@@ -92,6 +95,7 @@ int gb_audio_gb_enable_widget(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_ENABLE_WIDGET,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_enable_widget);
 
 int gb_audio_gb_disable_widget(struct gb_connection *connection,
 			       uint8_t widget_id)
@@ -103,6 +107,7 @@ int gb_audio_gb_disable_widget(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_DISABLE_WIDGET,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_disable_widget);
 
 int gb_audio_gb_get_pcm(struct gb_connection *connection, uint16_t data_cport,
 			uint32_t *format, uint32_t *rate, uint8_t *channels,
@@ -126,6 +131,7 @@ int gb_audio_gb_get_pcm(struct gb_connection *connection, uint16_t data_cport,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_get_pcm);
 
 int gb_audio_gb_set_pcm(struct gb_connection *connection, uint16_t data_cport,
 			uint32_t format, uint32_t rate, uint8_t channels,
@@ -142,6 +148,7 @@ int gb_audio_gb_set_pcm(struct gb_connection *connection, uint16_t data_cport,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_SET_PCM,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_set_pcm);
 
 int gb_audio_gb_set_tx_data_size(struct gb_connection *connection,
 				 uint16_t data_cport, uint16_t size)
@@ -154,6 +161,7 @@ int gb_audio_gb_set_tx_data_size(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_SET_TX_DATA_SIZE,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_set_tx_data_size);
 
 int gb_audio_gb_get_tx_delay(struct gb_connection *connection,
 			     uint16_t data_cport, uint32_t *delay)
@@ -173,6 +181,7 @@ int gb_audio_gb_get_tx_delay(struct gb_connection *connection,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_get_tx_delay);
 
 int gb_audio_gb_activate_tx(struct gb_connection *connection,
 			    uint16_t data_cport)
@@ -184,6 +193,7 @@ int gb_audio_gb_activate_tx(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_ACTIVATE_TX,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_activate_tx);
 
 int gb_audio_gb_deactivate_tx(struct gb_connection *connection,
 			      uint16_t data_cport)
@@ -195,6 +205,7 @@ int gb_audio_gb_deactivate_tx(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_DEACTIVATE_TX,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_deactivate_tx);
 
 int gb_audio_gb_set_rx_data_size(struct gb_connection *connection,
 				 uint16_t data_cport, uint16_t size)
@@ -207,6 +218,7 @@ int gb_audio_gb_set_rx_data_size(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_SET_RX_DATA_SIZE,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_set_rx_data_size);
 
 int gb_audio_gb_get_rx_delay(struct gb_connection *connection,
 			     uint16_t data_cport, uint32_t *delay)
@@ -226,6 +238,7 @@ int gb_audio_gb_get_rx_delay(struct gb_connection *connection,
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_get_rx_delay);
 
 int gb_audio_gb_activate_rx(struct gb_connection *connection,
 			    uint16_t data_cport)
@@ -237,6 +250,7 @@ int gb_audio_gb_activate_rx(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_ACTIVATE_RX,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_activate_rx);
 
 int gb_audio_gb_deactivate_rx(struct gb_connection *connection,
 			      uint16_t data_cport)
@@ -248,6 +262,7 @@ int gb_audio_gb_deactivate_rx(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_DEACTIVATE_RX,
 				 &req, sizeof(req), NULL, 0);
 }
+EXPORT_SYMBOL_GPL(gb_audio_gb_deactivate_rx);
 
 MODULE_DESCRIPTION("Greybus Audio Device Class Protocol library");
 MODULE_AUTHOR("Mark Greer <mgreer@animalcreek.com>");
