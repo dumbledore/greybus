@@ -158,7 +158,7 @@ static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 	dai->codec_name = codec_name;
 	dai->codec_dai_name = codec_dai_name;
 	gbmodule->index = index;
-	gbmodule->mgmt_cport = index;
+	gbmodule->mgmt_cport = connection->hd_cport_id;
 	gbmodule->dai_link = dai;
 	gbmodule->num_dai_links = 1;
 
@@ -181,7 +181,7 @@ static void gb_audio_mgmt_connection_exit(struct gb_connection *connection)
 
 	/* unregister all modules */
 	list_for_each_entry_safe(module, _module, &module_list, list) {
-		if (module->mgmt_cport == connection->bundle->id) {
+		if (module->mgmt_cport == connection->hd_cport_id) {
 			gbaudio_unregister_module(module);
 			kfree(module);
 			break;
