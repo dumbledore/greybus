@@ -247,3 +247,8 @@ int gb_audio_gb_deactivate_rx(struct gb_connection *connection,
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_DEACTIVATE_RX,
 				 &req, sizeof(req), NULL, 0);
 }
+
+MODULE_DESCRIPTION("Greybus Audio Device Class Protocol library");
+MODULE_AUTHOR("Mark Greer <mgreer@animalcreek.com>");
+MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("greybus:audio-gb");
