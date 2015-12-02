@@ -127,9 +127,7 @@ static struct snd_soc_dai_link gbaudio_dailink = {
 	.name = "GB PRI_MI2S_RX",
 	.stream_name = "Primary MI2S Playback",
 	.platform_name = "qcom,msm-pcm-routing.41",
-	.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.205",
-	.codec_name = "gbaudio-codec.0",
-	.codec_dai_name = "gbcodec_pcm.0",
+	.cpu_dai_name = "qcom,msm-dai-q6-mi2s-prim.204",
 	.no_pcm = 1,
 	.ignore_suspend = 1,
 };
@@ -138,7 +136,9 @@ static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 {
 	int ret, index;
 	struct gbaudio_module_info *gbmodule;
-	char name[NAME_SIZE], codec_name[NAME_SIZE], codec_dai_name[NAME_SIZE];
+	struct snd_soc_dai_link *dai;
+	char codec_name[NAME_SIZE];
+	char codec_dai_name[NAME_SIZE];
 
 	/* register module(s) */
 	gbmodule = kzalloc(sizeof(struct gbaudio_module_info), GFP_KERNEL);
@@ -149,15 +149,17 @@ static int gb_audio_mgmt_connection_init(struct gb_connection *connection)
 	 * each module can be used with single sound card at a time
 	 */
 	index = connection->bundle->id;
-	snprintf(name, NAME_SIZE, "%s.%d", "greybus-audio-codec", index);
 	snprintf(codec_name, NAME_SIZE, "%s.%d", "gbaudio-codec", index);
 	snprintf(codec_dai_name, NAME_SIZE, "%s.%d", "gbcodec_pcm", index);
 
 	strlcpy(gbmodule->codec_name, "gbaudio-codec", NAME_SIZE);
 	strlcpy(gbmodule->card_name, "msm8994-tomtom-mtp-snd-card", NAME_SIZE);
+	dai = &gbaudio_dailink;
+	dai->codec_name = codec_name;
+	dai->codec_dai_name = codec_dai_name;
 	gbmodule->index = index;
 	gbmodule->mgmt_cport = index;
-	gbmodule->dai_link = &gbaudio_dailink;
+	gbmodule->dai_link = dai;
 	gbmodule->num_dai_links = 1;
 
 	/* register module1 */
