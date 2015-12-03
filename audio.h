@@ -78,6 +78,7 @@ struct gbaudio_priv {
 
 struct gbaudio_module_info {
 	/* need to share this info to above user space */
+	int manager_id;
 	int vid;
 	int pid;
 	int slot;

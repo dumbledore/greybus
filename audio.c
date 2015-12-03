@@ -12,6 +12,7 @@
 
 #include "greybus.h"
 #include "audio.h"
+#include "gb_audio_manager.h"
 
 static LIST_HEAD(module_list);
 
@@ -38,6 +39,7 @@ int gbaudio_register_module(struct gbaudio_module_info *info)
 	struct snd_soc_dai_link *dai_link = info->dai_link;
 	char prefix_name[NAME_SIZE], codec_name[NAME_SIZE];
 	struct gb_audio_topology *topology;
+	struct gb_audio_manager_module_descriptor desc;
 
 	/* register platform device for Module 0*/
 	pdev = platform_device_register_simple(info->codec_name, info->index,
@@ -94,6 +96,15 @@ int gbaudio_register_module(struct gbaudio_module_info *info)
 	/* add this module to module_list */
 	list_add(&info->list, &module_list);
 
+	/* prepare for the audio manager */
+	strncpy(desc.name, codec_name, GB_AUDIO_MANAGER_MODULE_NAME_LEN); /* todo */
+	desc.slot = 1; /* todo */
+	desc.vid = 2; /* todo */
+	desc.pid = 3; /* todo */
+	desc.cport = info->mgmt_cport;
+	desc.devices = 0x2; /* todo */
+	info->manager_id = gb_audio_manager_add(&desc);
+
 	return 0;
 
 err_dai_link:
@@ -130,6 +141,9 @@ int gbaudio_unregister_module(struct gbaudio_module_info *gbmodule)
 	/* unregister platform device */
 	if (pdev)
 		platform_device_unregister(pdev);
+
+	/* notify the audio manager */
+	gb_audio_manager_remove(gbmodule->manager_id);
 
 	/* remove entry from the list */
 	list_del(&gbmodule->list);
