@@ -7,125 +7,10 @@
  */
 #include <linux/module.h>
 
-#include "audio.h"
+#include "greybus.h"
+#include "audio_codec.h"
 
-static int gbcodec_event_spk(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	/* Ensure GB speaker is connected */
-
-	return 0;
-}
-
-static int gbcodec_event_hp(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	/* Ensure GB module supports jack slot */
-
-	return 0;
-}
-
-static int gbcodec_event_int_mic(struct snd_soc_dapm_widget *w,
-					struct snd_kcontrol *k, int event)
-{
-	/* Ensure GB module supports jack slot */
-
-	return 0;
-}
-
-static const struct snd_kcontrol_new gbcodec_snd_controls[] = {
-	SOC_DOUBLE("Playback Mute", GBCODEC_MUTE_REG, 0, 1, 1, 1),
-	SOC_DOUBLE("Capture Mute", GBCODEC_MUTE_REG, 4, 5, 1, 1),
-	SOC_DOUBLE_R("Playback Volume", GBCODEC_PB_LVOL_REG,
-		     GBCODEC_PB_RVOL_REG, 0, 127, 0),
-	SOC_DOUBLE_R("Capture Volume", GBCODEC_CAP_LVOL_REG,
-		     GBCODEC_CAP_RVOL_REG, 0, 127, 0),
-};
-
-static const struct snd_kcontrol_new spk_amp_ctl =
-	SOC_DAPM_SINGLE("Switch", GBCODEC_CTL_REG, 0, 1, 0);
-
-static const struct snd_kcontrol_new hp_amp_ctl =
-	SOC_DAPM_SINGLE("Switch", GBCODEC_CTL_REG, 1, 1, 0);
-
-static const struct snd_kcontrol_new mic_adc_ctl =
-	SOC_DAPM_SINGLE("Switch", GBCODEC_CTL_REG, 4, 1, 0);
-
-/* APB1-GBSPK source */
-static const char * const gbcodec_apb1_src[] = {"Stereo", "Left", "Right"};
-
-static const SOC_ENUM_SINGLE_DECL(
-	gbcodec_apb1_rx_enum, GBCODEC_APB1_MUX_REG, 0, gbcodec_apb1_src);
-
-static const struct snd_kcontrol_new gbcodec_apb1_rx_mux =
-	SOC_DAPM_ENUM("APB1 source", gbcodec_apb1_rx_enum);
-
-static const SOC_ENUM_SINGLE_DECL(
-	gbcodec_mic_enum, GBCODEC_APB1_MUX_REG, 4, gbcodec_apb1_src);
-
-static const struct snd_kcontrol_new gbcodec_mic_mux =
-	SOC_DAPM_ENUM("MIC source", gbcodec_mic_enum);
-
-static const struct snd_soc_dapm_widget gbcodec_dapm_widgets[] = {
-	SND_SOC_DAPM_SPK("Spk", gbcodec_event_spk),
-	SND_SOC_DAPM_SPK("HP", gbcodec_event_hp),
-	SND_SOC_DAPM_MIC("Int Mic", gbcodec_event_int_mic),
-
-	SND_SOC_DAPM_OUTPUT("SPKOUT"),
-	SND_SOC_DAPM_OUTPUT("HPOUT"),
-
-	SND_SOC_DAPM_INPUT("MIC"),
-	SND_SOC_DAPM_INPUT("HSMIC"),
-
-	SND_SOC_DAPM_SWITCH("SPK Amp", SND_SOC_NOPM, 0, 0, &spk_amp_ctl),
-	SND_SOC_DAPM_SWITCH("HP Amp", SND_SOC_NOPM, 0, 0, &hp_amp_ctl),
-	SND_SOC_DAPM_SWITCH("MIC ADC", SND_SOC_NOPM, 0, 0, &mic_adc_ctl),
-
-	SND_SOC_DAPM_PGA("SPK DAC", SND_SOC_NOPM, 0, 0, NULL, 0),
-	SND_SOC_DAPM_PGA("HP DAC", SND_SOC_NOPM, 0, 0, NULL, 0),
-
-	SND_SOC_DAPM_MIXER("SPK Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("HP Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("APB1_TX Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
-
-	SND_SOC_DAPM_MUX("APB1_RX Mux", SND_SOC_NOPM, 0, 0,
-			 &gbcodec_apb1_rx_mux),
-	SND_SOC_DAPM_MUX("MIC Mux", SND_SOC_NOPM, 0, 0, &gbcodec_mic_mux),
-
-	SND_SOC_DAPM_AIF_IN("APB1RX", "APBridgeA1 Playback", 0, SND_SOC_NOPM, 0,
-			    0),
-	SND_SOC_DAPM_AIF_OUT("APB1TX", "APBridgeA1 Capture", 0, SND_SOC_NOPM, 0,
-			     0),
-};
-
-static const struct snd_soc_dapm_route gbcodec_dapm_routes[] = {
-	/* Playback path */
-	{"Spk", NULL, "SPKOUT"},
-	{"SPKOUT", NULL, "SPK Amp"},
-	{"SPK Amp", "Switch", "SPK DAC"},
-	{"SPK DAC", NULL, "SPK Mixer"},
-
-	{"HP", NULL, "HPOUT"},
-	{"HPOUT", NULL, "HP Amp"},
-	{"HP Amp", "Switch", "HP DAC"},
-	{"HP DAC", NULL, "HP Mixer"},
-
-	{"SPK Mixer", NULL, "APB1_RX Mux"},
-	{"HP Mixer", NULL, "APB1_RX Mux"},
-
-	{"APB1_RX Mux", "Left", "APB1RX"},
-	{"APB1_RX Mux", "Right", "APB1RX"},
-	{"APB1_RX Mux", "Stereo", "APB1RX"},
-
-	/* Capture path */
-	{"MIC", NULL, "Int Mic"},
-	{"MIC", NULL, "MIC Mux"},
-	{"MIC Mux", "Left", "MIC ADC"},
-	{"MIC Mux", "Right", "MIC ADC"},
-	{"MIC Mux", "Stereo", "MIC ADC"},
-	{"MIC ADC", "Switch", "APB1_TX Mixer"},
-	{"APB1_TX Mixer", NULL, "APB1TX"}
-};
+#define GB_AUDIO_MGMT_DRIVER_NAME	"gb_audio_mgmt"
 
 static int gbcodec_startup(struct snd_pcm_substream *substream,
 			   struct snd_soc_dai *dai)
@@ -168,24 +53,6 @@ static struct snd_soc_dai_ops gbcodec_dai_ops = {
 	.prepare = gbcodec_prepare,
 	.set_fmt = gbcodec_set_dai_fmt,
 	.digital_mute = gbcodec_digital_mute,
-};
-
-static struct snd_soc_dai_driver gbcodec_dai = {
-	.playback = {
-		.stream_name = "APBridgeA1 Playback",
-		.channels_min = 1,
-		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_44100,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
-	},
-	.capture = {
-		.stream_name = "APBridgeA1 Capture",
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_44100,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE,
-	},
-	.ops = &gbcodec_dai_ops,
 };
 
 static int gbcodec_probe(struct snd_soc_codec *codec)
@@ -254,60 +121,153 @@ static struct snd_soc_codec_driver soc_codec_dev_gbcodec = {
 	.reg_word_size = 1,
 
 	.idle_bias_off = true,
-
-	.controls = gbcodec_snd_controls,
-	.num_controls = ARRAY_SIZE(gbcodec_snd_controls),
-	.dapm_widgets = gbcodec_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(gbcodec_dapm_widgets),
-	.dapm_routes = gbcodec_dapm_routes,
-	.num_dapm_routes = ARRAY_SIZE(gbcodec_dapm_routes),
 };
 
-static int gbaudio_codec_probe(struct platform_device *pdev)
-{
-	int ret;
-	struct gbaudio_codec_info *gbcodec;
-	char dai_name[NAME_SIZE];
+struct device_driver gb_codec_driver = {
+	.name = "1-8",
+	.owner = THIS_MODULE,
+};
 
-	gbcodec = devm_kzalloc(&pdev->dev, sizeof(struct gbaudio_codec_info),
+/*
+ * This is the basic hook get things initialized and registered w/ gb
+ */
+
+static int gbaudio_codec_probe(struct gb_connection *connection)
+{
+	int ret, i;
+	struct gbaudio_codec_info *gbcodec;
+	struct gb_audio_topology *topology;
+	char name[NAME_SIZE], dai_name[NAME_SIZE];
+	struct gbaudio_module_info *gbmod_info;
+        struct device *dev = &connection->bundle->dev;
+	int dev_id = connection->bundle->id;
+
+	gbcodec = devm_kzalloc(dev, sizeof(struct gbaudio_codec_info),
 			       GFP_KERNEL);
 	if (!gbcodec)
 		return -ENOMEM;
-	platform_set_drvdata(pdev, gbcodec);
+	dev_set_drvdata(dev, gbcodec);
+	gbcodec->dev = dev;
+	gbcodec->mgmt_connection = connection;
 
-	snprintf(dai_name, NAME_SIZE, "%s.%d", "gbcodec_pcm", pdev->id);
-	gbcodec_dai.name = dai_name;
+	strlcpy(name, dev_name(dev), NAME_SIZE);
+	dev_err(dev, "codec name is %s\n", name);
 
-	ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_gbcodec,
-				     &gbcodec_dai, 1);
-	if (!ret)
-		gbcodec->registered = 1;
+	/* fetch topology data */
+	ret = gb_audio_gb_get_topology(connection, &topology);
+	if (ret) {
+		dev_err(gbcodec->dev,
+			"%d:Error while fetching topology\n", ret);
+		return ret;
+	}
 
+	/* validate topology data */
+	INIT_LIST_HEAD(&gbcodec->dai_list);
+	INIT_LIST_HEAD(&gbcodec->widget_list);
+	INIT_LIST_HEAD(&gbcodec->codec_ctl_list);
+	INIT_LIST_HEAD(&gbcodec->widget_ctl_list);
+
+	/* process topology data */
+	ret = gbaudio_tplg_parse_data(gbcodec, topology);
+	if (ret) {
+		dev_err(dev, "%d:Error while parsing topology data\n",
+			  ret);
+		return ret;
+	}
+
+	/* update codec info */
+	soc_codec_dev_gbcodec.controls = gbcodec->kctls;
+	soc_codec_dev_gbcodec.num_controls = gbcodec->num_kcontrols;
+	soc_codec_dev_gbcodec.dapm_widgets = gbcodec->widgets;
+	soc_codec_dev_gbcodec.num_dapm_widgets = gbcodec->num_dapm_widgets;
+	soc_codec_dev_gbcodec.dapm_routes = gbcodec->routes;
+	soc_codec_dev_gbcodec.num_dapm_routes = gbcodec->num_dapm_routes;
+
+	/* update DAI info */
+	for (i = 0; i < gbcodec->num_dais; i++) {
+		snprintf(dai_name, NAME_SIZE, "%s.%d", gbcodec->dais[i].name,
+			 dev_id);
+		gbcodec->dais[i].name = dai_name;
+		gbcodec->dais[i].ops = &gbcodec_dai_ops;
+	}
+
+	/* register codec */
+	dev->driver = &gb_codec_driver;
+	ret = snd_soc_register_codec(dev, &soc_codec_dev_gbcodec,
+				     gbcodec->dais, 1);
+	if (ret) {
+		dev_err(dev, "%d:Failed to register codec\n", ret);
+		return ret;
+	}
+
+	/* update DAI links in response to this codec */
+	gbmod_info = devm_kzalloc(dev, sizeof(struct gbaudio_module_info),
+				  GFP_KERNEL);
+	if (!gbmod_info) {
+		ret = -ENOMEM;
+		goto base_error;
+	}
+
+	gbmod_info->dev = dev;
+	gbmod_info->dev_id = dev_id;
+	strlcpy(gbmod_info->codec_name, name, NAME_SIZE);
+	gbmod_info->num_dais = gbcodec->num_dais;
+	for (i = 0; i < gbcodec->num_dais; i++)
+		gbmod_info->dai_names[i] = gbcodec->dais[i].name;
+	ret = gbaudio_register_module(gbmod_info);
+	if (ret) {
+		dev_err(dev, "Unable to update DAI links for %s codec inserted\n",
+			name);
+		ret = -EAGAIN;
+		goto base_error;
+	}
+	gbcodec->modinfo = gbmod_info;
+
+	return ret;
+
+base_error:
+	snd_soc_unregister_codec(dev);
 	return ret;
 }
 
-static const struct of_device_id gbcodec_of_match[] = {
-	{ .compatible = "greybus,codec", },
-	{},
-};
-
-static int gbaudio_codec_remove(struct platform_device *pdev)
+static void gbaudio_codec_remove(struct gb_connection *connection)
 {
-	snd_soc_unregister_codec(&pdev->dev);
+        struct device *dev = &connection->bundle->dev;
+	struct gbaudio_codec_info *gbcodec;
+	struct gbaudio_module_info *gbmod_info;
+
+	gbcodec = (struct gbaudio_codec_info *)dev_get_drvdata(dev);
+	gbmod_info = gbcodec->modinfo;
+
+	if (gbmod_info) {
+		gbaudio_unregister_module(gbmod_info);
+		devm_kfree(dev, gbmod_info);
+	}
+	snd_soc_unregister_codec(dev);
+	dev->driver = NULL;
+
+	return;
+}
+
+static int gbaudio_codec_report_event_recv(u8 type, struct gb_operation *op)
+{
+	struct gb_connection *connection = op->connection;
+
+	dev_warn(&connection->bundle->dev, "Audio Event received\n");
 
 	return 0;
 }
 
-static struct platform_driver gbaudio_codec_driver = {
-	.driver = {
-		.name = "gbaudio-codec",
-		.owner = THIS_MODULE,
-		.of_match_table = gbcodec_of_match,
-	},
-	.probe = gbaudio_codec_probe,
-	.remove   = gbaudio_codec_remove,
+static struct gb_protocol gb_audio_mgmt_protocol = {
+	.name			= GB_AUDIO_MGMT_DRIVER_NAME,
+	.id			= GREYBUS_PROTOCOL_AUDIO_MGMT,
+	.major			= 0,
+	.minor			= 1,
+	.connection_init	= gbaudio_codec_probe,
+	.connection_exit	= gbaudio_codec_remove,
+	.request_recv		= gbaudio_codec_report_event_recv,
 };
-module_platform_driver(gbaudio_codec_driver);
+gb_protocol_driver(&gb_audio_mgmt_protocol)
 
 MODULE_DESCRIPTION("Greybus Audio virtual codec driver");
 MODULE_AUTHOR("Vaibhav Agarwal <vaibhav.agarwal@linaro.org>");

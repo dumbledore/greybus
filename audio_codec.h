@@ -6,10 +6,8 @@
  * Released under the GPLv2 only.
  */
 
-#ifndef __LINUX_GBAUDIO_H
-#define __LINUX_GBAUDIO_H
-
-#ifdef __KERNEL__
+#ifndef __LINUX_GBAUDIO_CODEC_H
+#define __LINUX_GBAUDIO_CODEC_H
 
 #include <sound/soc.h>
 
@@ -85,40 +83,78 @@ struct gbaudio_module_info {
 	int type;
 	char vstr[NAME_SIZE];
 	char pstr[NAME_SIZE];
-	int mgmt_cport;
-	struct gb_connection *mgmt_connection;
-	int data_cport; /* TODO: should have list of data connection info */
-	struct gb_connection *data_connection;
 
 	/* codec device data */
-	struct platform_device *pdev;
-	int index;
+	struct device *dev;
+	int dev_id;
+	int num_dais;
 	char codec_name[NAME_SIZE];
-	void *codec_drvdata;
+	const char *dai_names[8];
 
-	/* dai link data */
+	/* module specific info */
 	char card_name[NAME_SIZE];
-	struct snd_soc_dai_link *dai_link;
 	int num_dai_links;
 
 	struct list_head list;
 };
 
+struct gbaudio_widget {
+	__u8 id;
+	char *name;
+	struct list_head list;
+};
+
+struct gbaudio_control {
+	__u8 id;
+	char *name;
+	const char* const *texts;
+	struct list_head list;
+};
+
+struct gbaudio_dai {
+	unsigned int data_cport;
+	char *name;
+	struct list_head list;
+};
+
 struct gbaudio_codec_info {
 	struct snd_soc_codec *codec;
+	struct device *dev;
 
-	bool usable;
 	u8 reg[GBCODEC_REG_COUNT];
-	int registered;
 
+	/* module info */
+	struct gbaudio_module_info *modinfo;
+
+	/* topology related */
+	struct gb_connection *mgmt_connection;
+	struct gb_connection *data_connection;
+	int num_dais;
 	int num_kcontrols;
 	int num_dapm_widgets;
 	int num_dapm_routes;
+	unsigned long dai_offset;
+	unsigned long widget_offset;
+	unsigned long control_offset;
+	unsigned long route_offset;
 	struct snd_kcontrol_new *kctls;
 	struct snd_soc_dapm_widget *widgets;
 	struct snd_soc_dapm_route *routes;
+	struct snd_soc_dai_driver *dais;
+
+	/* lists */
+	struct list_head dai_list;
+	struct list_head widget_list;
+	struct list_head codec_ctl_list;
+	struct list_head widget_ctl_list;
 	struct mutex lock;
 };
+
+int gbaudio_register_module(struct gbaudio_module_info *info);
+int gbaudio_unregister_module(struct gbaudio_module_info *gbmodule);
+
+int gbaudio_tplg_parse_data(struct gbaudio_codec_info *gbcodec,
+			       struct gb_audio_topology *tplg_data);
 
 extern int gb_audio_gb_get_topology(struct gb_connection *connection,
 				    struct gb_audio_topology **topology);
@@ -180,5 +216,4 @@ extern int gb_audio_apbridgea_start_rx(struct gb_connection *connection,
 extern int gb_audio_apbridgea_stop_rx(struct gb_connection *connection,
 				      __u16 i2s_port);
 
-#endif /* __KERNEL__ */
-#endif /* __LINUX_GBAUDIO_H */
+#endif /* __LINUX_GBAUDIO_CODEC_H */
