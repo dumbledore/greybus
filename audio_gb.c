@@ -117,15 +117,15 @@ int gb_audio_gb_get_pcm(struct gb_connection *connection, uint16_t data_cport,
 	struct gb_audio_get_pcm_response resp;
 	int ret;
 
-	req.data_cport = data_cport;
+	req.data_cport = cpu_to_le16(data_cport);
 
 	ret = gb_operation_sync(connection, GB_AUDIO_TYPE_GET_PCM,
 				&req, sizeof(req), &resp, sizeof(resp));
 	if (ret)
 		return ret;
 
-	*format = resp.format;
-	*rate = resp.rate;
+	*format = le32_to_cpu(resp.format);
+	*rate = le32_to_cpu(resp.rate);
 	*channels = resp.channels;
 	*sig_bits = resp.sig_bits;
 
@@ -139,9 +139,9 @@ int gb_audio_gb_set_pcm(struct gb_connection *connection, uint16_t data_cport,
 {
 	struct gb_audio_set_pcm_request req;
 
-	req.data_cport = data_cport;
-	req.format = format;
-	req.rate = rate;
+	req.data_cport = cpu_to_le16(data_cport);
+	req.format = cpu_to_le32(format);
+	req.rate = cpu_to_le32(rate);
 	req.channels = channels;
 	req.sig_bits = sig_bits;
 
@@ -155,8 +155,8 @@ int gb_audio_gb_set_tx_data_size(struct gb_connection *connection,
 {
 	struct gb_audio_set_tx_data_size_request req;
 
-	req.data_cport = data_cport;
-	req.size = size;
+	req.data_cport = cpu_to_le16(data_cport);
+	req.size = cpu_to_le16(size);
 
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_SET_TX_DATA_SIZE,
 				 &req, sizeof(req), NULL, 0);
@@ -170,14 +170,14 @@ int gb_audio_gb_get_tx_delay(struct gb_connection *connection,
 	struct gb_audio_get_tx_delay_response resp;
 	int ret;
 
-	req.data_cport = data_cport;
+	req.data_cport = cpu_to_le16(data_cport);
 
 	ret = gb_operation_sync(connection, GB_AUDIO_TYPE_GET_TX_DELAY,
 				&req, sizeof(req), &resp, sizeof(resp));
 	if (ret)
 		return ret;
 
-	*delay = resp.delay;
+	*delay = le32_to_cpu(resp.delay);
 
 	return 0;
 }
@@ -188,7 +188,7 @@ int gb_audio_gb_activate_tx(struct gb_connection *connection,
 {
 	struct gb_audio_activate_tx_request req;
 
-	req.data_cport = data_cport;
+	req.data_cport = cpu_to_le16(data_cport);
 
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_ACTIVATE_TX,
 				 &req, sizeof(req), NULL, 0);
@@ -200,7 +200,7 @@ int gb_audio_gb_deactivate_tx(struct gb_connection *connection,
 {
 	struct gb_audio_deactivate_tx_request req;
 
-	req.data_cport = data_cport;
+	req.data_cport = cpu_to_le16(data_cport);
 
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_DEACTIVATE_TX,
 				 &req, sizeof(req), NULL, 0);
@@ -212,8 +212,8 @@ int gb_audio_gb_set_rx_data_size(struct gb_connection *connection,
 {
 	struct gb_audio_set_rx_data_size_request req;
 
-	req.data_cport = data_cport;
-	req.size = size;
+	req.data_cport = cpu_to_le16(data_cport);
+	req.size = cpu_to_le16(size);
 
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_SET_RX_DATA_SIZE,
 				 &req, sizeof(req), NULL, 0);
@@ -227,14 +227,14 @@ int gb_audio_gb_get_rx_delay(struct gb_connection *connection,
 	struct gb_audio_get_rx_delay_response resp;
 	int ret;
 
-	req.data_cport = data_cport;
+	req.data_cport = cpu_to_le16(data_cport);
 
 	ret = gb_operation_sync(connection, GB_AUDIO_TYPE_GET_RX_DELAY,
 				&req, sizeof(req), &resp, sizeof(resp));
 	if (ret)
 		return ret;
 
-	*delay = resp.delay;
+	*delay = le32_to_cpu(resp.delay);
 
 	return 0;
 }
@@ -245,7 +245,7 @@ int gb_audio_gb_activate_rx(struct gb_connection *connection,
 {
 	struct gb_audio_activate_rx_request req;
 
-	req.data_cport = data_cport;
+	req.data_cport = cpu_to_le16(data_cport);
 
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_ACTIVATE_RX,
 				 &req, sizeof(req), NULL, 0);
@@ -257,7 +257,7 @@ int gb_audio_gb_deactivate_rx(struct gb_connection *connection,
 {
 	struct gb_audio_deactivate_rx_request req;
 
-	req.data_cport = data_cport;
+	req.data_cport = cpu_to_le16(data_cport);
 
 	return gb_operation_sync(connection, GB_AUDIO_TYPE_DEACTIVATE_RX,
 				 &req, sizeof(req), NULL, 0);
