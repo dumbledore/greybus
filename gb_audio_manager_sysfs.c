@@ -2,16 +2,16 @@
 #include <linux/sysfs.h>
 
 #include "gb_audio_manager.h"
-#include "gb_audio_manager_sysfs.h"
+#include "gb_audio_manager_private.h"
 
 static ssize_t manager_sysfs_add_store(
 	struct kobject *kobj, struct kobj_attribute *attr,
 	const char *buf, size_t count)
 {
-	struct gb_audio_module_descriptor desc = {{0}};
+	struct gb_audio_manager_module_descriptor desc = {{0}};
 
 	int num = sscanf(buf,
-			"name=%" GB_AUDIO_MODULE_NAME_LEN_SSCANF "s "
+			"name=%" GB_AUDIO_MANAGER_MODULE_NAME_LEN_SSCANF "s "
 			"slot=%d vid=%d pid=%d cport=%d devices=0x%X",
 			desc.name, &desc.slot, &desc.vid, &desc.pid,
 			&desc.cport, &desc.devices);

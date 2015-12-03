@@ -33,7 +33,7 @@ gb-audio-codec-y := audio_codec.o
 gb-audio-gb-y := audio_gb.o
 gb-audio-y := audio.o
 gb-audio-manager-y += gb_audio_manager.o
-gb-audio-manager-y += gb_audio_module.o
+gb-audio-manager-y += gb_audio_manager_module.o
 
 obj-m += greybus.o
 obj-m += gb-phy.o

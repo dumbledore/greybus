@@ -1,23 +1,22 @@
 #include <linux/slab.h>
 
-#include "gb_audio_module_private.h"
-#include "gb_audio_module.h"
 #include "gb_audio_manager.h"
+#include "gb_audio_manager_private.h"
 
-#define to_gb_audio_module_attr(x) container_of(x, struct gb_audio_module_attribute, attr)
-#define to_gb_audio_module(x) container_of(x, struct gb_audio_module, kobj)
+#define to_gb_audio_module_attr(x) container_of(x, struct gb_audio_manager_module_attribute, attr)
+#define to_gb_audio_module(x) container_of(x, struct gb_audio_manager_module, kobj)
 
-struct gb_audio_module_attribute {
+struct gb_audio_manager_module_attribute {
 	struct attribute attr;
-	ssize_t (*show)(struct gb_audio_module *module, struct gb_audio_module_attribute *attr, char *buf);
-	ssize_t (*store)(struct gb_audio_module *module, struct gb_audio_module_attribute *attr, const char *buf, size_t count);
+	ssize_t (*show)(struct gb_audio_manager_module *module, struct gb_audio_manager_module_attribute *attr, char *buf);
+	ssize_t (*store)(struct gb_audio_manager_module *module, struct gb_audio_manager_module_attribute *attr, const char *buf, size_t count);
 };
 
 static ssize_t gb_audio_module_attr_show(
 	struct kobject *kobj, struct attribute *attr, char *buf)
 {
-	struct gb_audio_module_attribute *attribute;
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module_attribute *attribute;
+	struct gb_audio_manager_module *module;
 
 	attribute = to_gb_audio_module_attr(attr);
 	module = to_gb_audio_module(kobj);
@@ -31,8 +30,8 @@ static ssize_t gb_audio_module_attr_show(
 static ssize_t gb_audio_module_attr_store(
 	struct kobject *kobj, struct attribute *attr, const char *buf, size_t len)
 {
-	struct gb_audio_module_attribute *attribute;
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module_attribute *attribute;
+	struct gb_audio_manager_module *module;
 
 	attribute = to_gb_audio_module_attr(attr);
 	module = to_gb_audio_module(kobj);
@@ -50,70 +49,70 @@ static const struct sysfs_ops gb_audio_module_sysfs_ops = {
 
 static void gb_audio_module_release(struct kobject *kobj)
 {
-	struct gb_audio_module *module = to_gb_audio_module(kobj);
+	struct gb_audio_manager_module *module = to_gb_audio_module(kobj);
 	printk(KERN_INFO "Destroying audio module #%d\n", module->id);
 	/* TODO -> delete from list */
 	kfree(module);
 }
 
 static ssize_t gb_audio_module_name_show(
-	struct gb_audio_module *module,
-	struct gb_audio_module_attribute *attr, char *buf)
+	struct gb_audio_manager_module *module,
+	struct gb_audio_manager_module_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%s", module->desc.name);
 }
 
-static struct gb_audio_module_attribute gb_audio_module_name_attribute =
+static struct gb_audio_manager_module_attribute gb_audio_module_name_attribute =
 	__ATTR(name, 0664, gb_audio_module_name_show, NULL);
 
 static ssize_t gb_audio_module_slot_show(
-	struct gb_audio_module *module,
-	struct gb_audio_module_attribute *attr, char *buf)
+	struct gb_audio_manager_module *module,
+	struct gb_audio_manager_module_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d", module->desc.slot);
 }
 
-static struct gb_audio_module_attribute gb_audio_module_slot_attribute =
+static struct gb_audio_manager_module_attribute gb_audio_module_slot_attribute =
 	__ATTR(slot, 0664, gb_audio_module_slot_show, NULL);
 
 static ssize_t gb_audio_module_vid_show(
-	struct gb_audio_module *module,
-	struct gb_audio_module_attribute *attr, char *buf)
+	struct gb_audio_manager_module *module,
+	struct gb_audio_manager_module_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d", module->desc.vid);
 }
 
-static struct gb_audio_module_attribute gb_audio_module_vid_attribute =
+static struct gb_audio_manager_module_attribute gb_audio_module_vid_attribute =
 	__ATTR(vid, 0664, gb_audio_module_vid_show, NULL);
 
 static ssize_t gb_audio_module_pid_show(
-	struct gb_audio_module *module,
-	struct gb_audio_module_attribute *attr, char *buf)
+	struct gb_audio_manager_module *module,
+	struct gb_audio_manager_module_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d", module->desc.pid);
 }
 
-static struct gb_audio_module_attribute gb_audio_module_pid_attribute =
+static struct gb_audio_manager_module_attribute gb_audio_module_pid_attribute =
 	__ATTR(pid, 0664, gb_audio_module_pid_show, NULL);
 
 static ssize_t gb_audio_module_cport_show(
-	struct gb_audio_module *module,
-	struct gb_audio_module_attribute *attr, char *buf)
+	struct gb_audio_manager_module *module,
+	struct gb_audio_manager_module_attribute *attr, char *buf)
 {
 	return sprintf(buf, "%d", module->desc.cport);
 }
 
-static struct gb_audio_module_attribute gb_audio_module_cport_attribute =
+static struct gb_audio_manager_module_attribute gb_audio_module_cport_attribute =
 	__ATTR(cport, 0664, gb_audio_module_cport_show, NULL);
 
 static ssize_t gb_audio_module_devices_show(
-	struct gb_audio_module *module,
-	struct gb_audio_module_attribute *attr, char *buf)
+	struct gb_audio_manager_module *module,
+	struct gb_audio_manager_module_attribute *attr, char *buf)
 {
 	return sprintf(buf, "0x%X", module->desc.devices);
 }
 
-static struct gb_audio_module_attribute gb_audio_module_devices_attribute =
+static struct gb_audio_manager_module_attribute gb_audio_module_devices_attribute =
 	__ATTR(devices, 0664, gb_audio_module_devices_show, NULL);
 
 static struct attribute *gb_audio_module_default_attrs[] = {
@@ -132,7 +131,7 @@ static struct kobj_type gb_audio_module_type = {
 	.default_attrs = gb_audio_module_default_attrs,
 };
 
-static void send_add_uevent(struct gb_audio_module *module)
+static void send_add_uevent(struct gb_audio_manager_module *module)
 {
 	char name_string[128];
 	char slot_string[64];
@@ -161,13 +160,13 @@ static void send_add_uevent(struct gb_audio_module *module)
 	kobject_uevent_env(&module->kobj, KOBJ_ADD, envp);
 }
 
-int gb_audio_module_create(
-	struct gb_audio_module **module,
+int gb_audio_manager_module_create(
+	struct gb_audio_manager_module **module,
 	struct kset *manager_kset,
-	int id, struct gb_audio_module_descriptor *desc)
+	int id, struct gb_audio_manager_module_descriptor *desc)
 {
 	int err;
-	struct gb_audio_module *m;
+	struct gb_audio_manager_module *m;
 
 	m = kzalloc(sizeof(*m), GFP_ATOMIC);
 	if (!m)
@@ -208,7 +207,7 @@ int gb_audio_module_create(
 	return 0;
 }
 
-void gb_audio_module_dump(struct gb_audio_module *module)
+void gb_audio_manager_module_dump(struct gb_audio_manager_module *module)
 {
 	printk(KERN_INFO "audio module #%d name=%s slot=%d vid=%d pid=%d cport=%d devices=0x%X\n",
 		module->id,

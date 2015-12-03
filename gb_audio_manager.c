@@ -5,8 +5,7 @@
 #include <linux/rwlock.h>
 
 #include "gb_audio_manager.h"
-#include "gb_audio_manager_sysfs.h"
-#include "gb_audio_module_private.h"
+#include "gb_audio_manager_private.h"
 
 static struct kset *manager_kset;
 
@@ -16,9 +15,9 @@ static DEFINE_RWLOCK(modules_lock);
 static int current_module_id = 0;
 
 /* helpers */
-static struct gb_audio_module* gb_audio_manager_get_locked(int id)
+static struct gb_audio_manager_module* gb_audio_manager_get_locked(int id)
 {
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module *module;
 
 	if (id < 0)
 		return NULL;
@@ -32,13 +31,13 @@ static struct gb_audio_module* gb_audio_manager_get_locked(int id)
 }
 
 /* public API */
-int gb_audio_manager_add(struct gb_audio_module_descriptor *desc)
+int gb_audio_manager_add(struct gb_audio_manager_module_descriptor *desc)
 {
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module *module;
 	unsigned long flags;
 	int err;
 
-	err = gb_audio_module_create(&module, manager_kset, current_module_id++, desc);
+	err = gb_audio_manager_module_create(&module, manager_kset, current_module_id++, desc);
 	if (err)
 		return err;
 
@@ -53,7 +52,7 @@ EXPORT_SYMBOL_GPL(gb_audio_manager_add);
 
 int gb_audio_manager_remove(int id)
 {
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module *module;
 	unsigned long flags;
 
 	write_lock_irqsave(&modules_lock, flags);
@@ -73,7 +72,7 @@ EXPORT_SYMBOL_GPL(gb_audio_manager_remove);
 
 void gb_audio_manager_remove_all(void)
 {
-	struct gb_audio_module *module, *next;
+	struct gb_audio_manager_module *module, *next;
 	int is_empty = 1;
 	unsigned long flags;
 
@@ -94,9 +93,9 @@ void gb_audio_manager_remove_all(void)
 }
 EXPORT_SYMBOL_GPL(gb_audio_manager_remove_all);
 
-struct gb_audio_module* gb_audio_manager_get_module(int id)
+struct gb_audio_manager_module* gb_audio_manager_get_module(int id)
 {
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module *module;
 	unsigned long flags;
 
 	read_lock_irqsave(&modules_lock, flags);
@@ -107,7 +106,7 @@ struct gb_audio_module* gb_audio_manager_get_module(int id)
 }
 EXPORT_SYMBOL_GPL(gb_audio_manager_get_module);
 
-void gb_audio_manager_put_module(struct gb_audio_module *module)
+void gb_audio_manager_put_module(struct gb_audio_manager_module *module)
 {
 	kobject_put(&module->kobj);
 }
@@ -115,7 +114,7 @@ EXPORT_SYMBOL_GPL(gb_audio_manager_put_module);
 
 int gb_audio_manager_dump_module(int id)
 {
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module *module;
 	unsigned long flags;
 
 	read_lock_irqsave(&modules_lock, flags);
@@ -125,20 +124,20 @@ int gb_audio_manager_dump_module(int id)
 	if (!module)
 		return -EINVAL;
 
-	gb_audio_module_dump(module);
+	gb_audio_manager_module_dump(module);
 	return 0;
 }
 EXPORT_SYMBOL_GPL(gb_audio_manager_dump_module);
 
 void gb_audio_manager_dump_all(void)
 {
-	struct gb_audio_module *module;
+	struct gb_audio_manager_module *module;
 	int count = 0;
 	unsigned long flags;
 
 	read_lock_irqsave(&modules_lock, flags);
 	list_for_each_entry(module, &modules_list, list) {
-		gb_audio_module_dump(module);
+		gb_audio_manager_module_dump(module);
 		count++;
 	}
 	read_unlock_irqrestore(&modules_lock, flags);
