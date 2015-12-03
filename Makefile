@@ -92,7 +92,7 @@ ccflags-y := -Wall
 # needed for trace events
 ccflags-y += -I$(src)
 
-GB_AUDIO_MANAGER_SYSFS ?= false
+GB_AUDIO_MANAGER_SYSFS ?= true
 ifeq ($(GB_AUDIO_MANAGER_SYSFS),true)
 gb-audio-manager-y += gb_audio_manager_sysfs.o
 ccflags-y += -DGB_AUDIO_MANAGER_SYSFS
