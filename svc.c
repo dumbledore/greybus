@@ -695,6 +695,7 @@ static int gb_svc_connection_init(struct gb_connection *connection)
 	ida_init(&svc->device_id_map);
 	svc->state = GB_SVC_STATE_RESET;
 	svc->connection = connection;
+	svc->hd = hd;
 	connection->private = svc;
 
 	hd->svc = svc;
@@ -708,6 +709,8 @@ static void gb_svc_connection_exit(struct gb_connection *connection)
 
 	if (device_is_registered(&svc->dev))
 		device_del(&svc->dev);
+
+	flush_workqueue(svc->wq);
 
 	connection->hd->svc = NULL;
 	connection->private = NULL;
