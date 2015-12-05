@@ -80,9 +80,9 @@
 
 struct audio_apbridgea_set_config_request {
 	__u8	type;
-	__u32	format;			/* AUDIO_APBRIDGEA_PCM_FMT_* */
-	__u32	rate;			/* AUDIO_APBRIDGEA_PCM_RATE_* */
-	__u32	mclk_freq;		/* XXX May be able to remove */
+	__le32	format;			/* AUDIO_APBRIDGEA_PCM_FMT_* */
+	__le32	rate;			/* AUDIO_APBRIDGEA_PCM_RATE_* */
+	__le32	mclk_freq;		/* XXX May be able to remove */
 } __packed;
 
 struct audio_apbridgea_register_cport_request {
@@ -95,7 +95,7 @@ struct audio_apbridgea_unregister_cport_request {
 
 struct audio_apbridgea_set_tx_data_size_request {
 	__u8	type;
-	__u16	size;
+	__le16	size;
 } __packed;
 
 struct audio_apbridgea_get_tx_delay_request {
@@ -103,7 +103,7 @@ struct audio_apbridgea_get_tx_delay_request {
 } __packed;
 
 struct audio_apbridgea_get_tx_delay_response {
-	__u16	delay;
+	__le16	delay;
 } __packed;
 
 struct audio_apbridgea_start_tx_request {
@@ -117,7 +117,7 @@ struct audio_apbridgea_stop_tx_request {
 
 struct audio_apbridgea_set_rx_data_size_request {
 	__u8	type;
-	__u16	size;
+	__le16	size;
 } __packed;
 
 struct audio_apbridgea_get_rx_delay_request {
@@ -125,7 +125,7 @@ struct audio_apbridgea_get_rx_delay_request {
 } __packed;
 
 struct audio_apbridgea_get_rx_delay_response {
-	__u16	delay;
+	__le16	delay;
 } __packed;
 
 struct audio_apbridgea_start_rx_request {
