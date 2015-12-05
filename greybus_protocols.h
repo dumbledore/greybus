@@ -1607,6 +1607,8 @@ struct gb_audio_widget {
 	__u8	id;
 	__u8	type;		/* GB_AUDIO_WIDGET_TYPE_* */
 	__u8	state;		/* GB_AUDIO_WIDGET_STATE_* */
+	__u8	ncontrols;
+	struct gb_audio_control	ctl[0];	/* 'ncontrols' entries */
 } __packed;
 
 struct gb_audio_route {
