@@ -74,33 +74,9 @@ struct gbaudio_priv {
 #endif
 };
 
-struct gbaudio_module_info {
-	/* need to share this info to above user space */
-	int manager_id;
-	int vid;
-	int pid;
-	int slot;
-	int type;
-	char vstr[NAME_SIZE];
-	char pstr[NAME_SIZE];
-
-	/* codec device data */
-	struct device *dev;
-	int dev_id;
-	int num_dais;
-	char codec_name[NAME_SIZE];
-	const char *dai_names[8];
-
-	/* module specific info */
-	char card_name[NAME_SIZE];
-	int num_dai_links;
-
-	struct list_head list;
-};
-
 struct gbaudio_widget {
 	__u8 id;
-	char *name;
+	const char *name;
 	struct list_head list;
 };
 
@@ -112,23 +88,35 @@ struct gbaudio_control {
 };
 
 struct gbaudio_dai {
-	unsigned int data_cport;
-	char *name;
+	__le16 data_cport;
+	const char *name;
+	struct gb_connection *connection;
 	struct list_head list;
 };
 
 struct gbaudio_codec_info {
+	/* module info */
+	int dev_id;	/* check if it should be bundle_id/hd_cport_id */
+	int vid;
+	int pid;
+	int slot;
+	int type;
+	char vstr[NAME_SIZE];
+	char pstr[NAME_SIZE];
+	struct list_head list;
+	struct gb_audio_topology *topology;
+
+	/* soc related data */
 	struct snd_soc_codec *codec;
 	struct device *dev;
-
 	u8 reg[GBCODEC_REG_COUNT];
 
-	/* module info */
-	struct gbaudio_module_info *modinfo;
+	/* dai_link related */
+	char card_name[NAME_SIZE];
+	int num_dai_links;
 
 	/* topology related */
 	struct gb_connection *mgmt_connection;
-	struct gb_connection *data_connection;
 	int num_dais;
 	int num_kcontrols;
 	int num_dapm_widgets;
@@ -150,12 +138,13 @@ struct gbaudio_codec_info {
 	struct mutex lock;
 };
 
-int gbaudio_register_module(struct gbaudio_module_info *info);
-int gbaudio_unregister_module(struct gbaudio_module_info *gbmodule);
-
+int gbaudio_add_dai(struct gbaudio_codec_info *gbcodec, int data_cport,
+			   struct gb_connection *connection, const char *name);
 int gbaudio_tplg_parse_data(struct gbaudio_codec_info *gbcodec,
 			       struct gb_audio_topology *tplg_data);
+void gbaudio_tplg_release(struct gbaudio_codec_info *gbcodec);
 
+/* protocol related */
 extern int gb_audio_gb_get_topology(struct gb_connection *connection,
 				    struct gb_audio_topology **topology);
 extern int gb_audio_gb_get_control(struct gb_connection *connection,

@@ -47,7 +47,7 @@ static const char *gbaudio_map_controlid(struct gbaudio_codec_info *gbcodec,
 	return NULL;
 }
 
-static char *gbaudio_map_widgetid(struct gbaudio_codec_info *gbcodec,
+static const char *gbaudio_map_widgetid(struct gbaudio_codec_info *gbcodec,
 					  __u8 widget_id)
 {
 	struct gbaudio_widget *widget;
@@ -757,7 +757,14 @@ static int gbaudio_tplg_process_dais(struct gbaudio_codec_info *gbcodec,
 		}
 		dai->data_cport = curr->data_cport;
 		dai->name = curr->name;
-		list_add(&dai->list, &gbcodec->dai_list);
+		ret = gbaudio_add_dai(gbcodec, dai->data_cport, NULL,
+				      dai->name);
+		if (ret) {
+			dev_err(gbcodec->dev,
+				"%d:Error while adding DAI to list\n", ret);
+			devm_kfree(gbcodec->dev, dai);
+			goto error;
+		}
 		curr++;
 	}
 	gbcodec->dais = gb_dais;
@@ -920,4 +927,48 @@ int gbaudio_tplg_parse_data(struct gbaudio_codec_info *gbcodec,
 	dev_err(gbcodec->dev, "Route parsing finished\n");
 
 	return ret;
+}
+
+void gbaudio_tplg_release(struct gbaudio_codec_info *gbcodec)
+{
+	struct gbaudio_dai *dai, *_dai;
+	struct gbaudio_control *control, *_control;
+	struct gbaudio_widget *widget, *_widget;
+
+	if (!gbcodec->topology)
+		return;
+
+	/* release kcontrols */
+	list_for_each_entry_safe(control, _control, &gbcodec->codec_ctl_list,
+				 list) {
+		list_del(&control->list);
+		devm_kfree(gbcodec->dev, control);
+	}
+	devm_kfree(gbcodec->dev, gbcodec->kctls);
+
+	/* release widget controls */
+	list_for_each_entry_safe(control, _control, &gbcodec->widget_ctl_list,
+				 list) {
+		list_del(&control->list);
+		devm_kfree(gbcodec->dev, control);
+	}
+
+	/* release widgets */
+	list_for_each_entry_safe(widget, _widget, &gbcodec->widget_list,
+				 list) {
+		list_del(&widget->list);
+		devm_kfree(gbcodec->dev, widget);
+	}
+	devm_kfree(gbcodec->dev, gbcodec->widgets);
+
+	/* release routes */
+	devm_kfree(gbcodec->dev, gbcodec->routes);
+
+	/* release DAIs */
+	mutex_lock(&gbcodec->lock);
+	list_for_each_entry_safe(dai, _dai, &gbcodec->dai_list, list) {
+		list_del(&dai->list);
+		devm_kfree(gbcodec->dev, dai);
+	}
+	mutex_unlock(&gbcodec->lock);
 }
