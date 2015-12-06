@@ -207,7 +207,7 @@ static int gbcodec_mixer_ctl_put(struct snd_kcontrol *kcontrol,
 	ret = gb_audio_gb_set_control(gb->mgmt_connection, data->ctl_id,
 				      -1, &gbvalue);
 	if (ret) {
-		dev_err(codec->dev, "%d:Error in mixer_ctl_get() for %s\n", ret,
+		dev_err(codec->dev, "%d:Error in mixer_ctl_put() for %s\n", ret,
 			kcontrol->id.name);
 	}
 
@@ -918,6 +918,53 @@ static int gbaudio_tplg_process_header(struct gbaudio_codec_info *gbcodec,
 		gbcodec->control_offset);
 	dev_dbg(gbcodec->dev, "widget offset is %lx\n", gbcodec->widget_offset);
 	dev_dbg(gbcodec->dev, "route offset is %lx\n", gbcodec->route_offset);
+
+	return 0;
+}
+
+int gbaudio_add_dai(struct gbaudio_codec_info *gbcodec, int data_cport,
+			   struct gb_connection *connection, const char *name)
+{
+	int found;
+	struct gbaudio_dai *dai;
+
+	/* FIXME need to take care for multiple DAIs */
+	mutex_lock(&gbcodec->lock);
+	if (list_empty(&gbcodec->dai_list))
+		goto add_dai;
+
+	list_for_each_entry(dai, &gbcodec->dai_list, list) {
+		if (dai->data_cport != connection->hd_cport_id)
+			continue;
+		found = 1;
+		break;
+	}
+
+	if (found != 1) {
+		mutex_unlock(&gbcodec->lock);
+		return -EINVAL;
+	}
+
+	if (connection)
+		dai->connection = connection;
+
+	if (name)
+		dai->name = name;
+	mutex_unlock(&gbcodec->lock);
+	return 0;
+
+add_dai:
+	dai = devm_kzalloc(gbcodec->dev, sizeof(*dai), GFP_KERNEL);
+	if (!dai) {
+		mutex_unlock(&gbcodec->lock);
+		return -ENOMEM;
+	}
+
+	dai->data_cport = data_cport;
+	dai->connection = connection;
+	dai->name = name;
+	list_add(&dai->list, &gbcodec->dai_list);
+	mutex_unlock(&gbcodec->lock);
 
 	return 0;
 }

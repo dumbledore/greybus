@@ -711,6 +711,7 @@ static int gbaudio_codec_probe(struct gb_connection *connection)
 	/* inform above layer for uevent */
 	if (!gbcodec->set_uevent &&
 	    (gbcodec->dai_added == gbcodec->num_dais)) {
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 1);
 		/* prepare for the audio manager */
 		strncpy(desc.name, dev_name(dev),
 			GB_AUDIO_MANAGER_MODULE_NAME_LEN); /* todo */
@@ -756,6 +757,7 @@ static void gbaudio_codec_remove(struct gb_connection *connection)
 	mutex_lock(&gbcodec->lock);
 	if (gbcodec->set_uevent) {
 		/* notify the audio manager */
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 0);
 		gb_audio_manager_remove(gbcodec->manager_id);
 		gbcodec->set_uevent = 0;
 	}
@@ -792,53 +794,6 @@ static struct gb_protocol gb_audio_mgmt_protocol = {
 	.request_recv		= gbaudio_codec_report_event_recv,
 };
 
-int gbaudio_add_dai(struct gbaudio_codec_info *gbcodec, int data_cport,
-			   struct gb_connection *connection, const char *name)
-{
-	int found;
-	struct gbaudio_dai *dai;
-
-	/* FIXME need to take care for multiple DAIs */
-	mutex_lock(&gbcodec->lock);
-	if (list_empty(&gbcodec->dai_list))
-		goto add_dai;
-
-	list_for_each_entry(dai, &gbcodec->dai_list, list) {
-		if (dai->data_cport != connection->hd_cport_id)
-			continue;
-		found = 1;
-		break;
-	}
-
-	if (found != 1) {
-		mutex_unlock(&gbcodec->lock);
-		return -EINVAL;
-	}
-
-	if (connection)
-		dai->connection = connection;
-
-	if (name)
-		dai->name = name;
-	mutex_unlock(&gbcodec->lock);
-	return 0;
-
-add_dai:
-	dai = devm_kzalloc(gbcodec->dev, sizeof(*dai), GFP_KERNEL);
-	if (!dai) {
-		mutex_unlock(&gbcodec->lock);
-		return -ENOMEM;
-	}
-
-	dai->data_cport = data_cport;
-	dai->connection = connection;
-	dai->name = name;
-	list_add(&dai->list, &gbcodec->dai_list);
-	mutex_unlock(&gbcodec->lock);
-
-	return 0;
-}
-
 static int gbaudio_dai_probe(struct gb_connection *connection)
 {
 	int ret;
@@ -866,6 +821,7 @@ static int gbaudio_dai_probe(struct gb_connection *connection)
 	if (!gbcodec->set_uevent && gbcodec->codec_registered &&
 	    (gbcodec->dai_added == gbcodec->num_dais)) {
 		/* prepare for the audio manager */
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 1);
 		strncpy(desc.name, dev_name(dev),
 			GB_AUDIO_MANAGER_MODULE_NAME_LEN); /* todo */
 		desc.slot = 1; /* todo */
@@ -897,6 +853,7 @@ static void gbaudio_dai_remove(struct gb_connection *connection)
 	mutex_lock(&gbcodec->lock);
 	if (gbcodec->set_uevent) {
 		/* notify the audio manager */
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 0);
 		gb_audio_manager_remove(gbcodec->manager_id);
 		gbcodec->set_uevent = 0;
 	}
