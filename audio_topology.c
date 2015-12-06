@@ -1074,3 +1074,8 @@ void gbaudio_tplg_release(struct gbaudio_codec_info *gbcodec)
 	}
 	mutex_unlock(&gbcodec->lock);
 }
+
+MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("greybus:audio-topology");
+MODULE_DESCRIPTION("Greybus Audio Topology Parser");
+MODULE_AUTHOR("Vaibhav Agarwal <vaibhav.agarwal@linaro.org>");
