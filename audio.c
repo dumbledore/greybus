@@ -171,3 +171,8 @@ int gbaudio_unregister_module(struct gbaudio_module_info *gbmodule)
 
 	return 0;
 }
+
+MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("greybus:audio");
+MODULE_DESCRIPTION("Greybus Audio Driver");
+MODULE_AUTHOR("Vaibhav Agarwal <vaibhav.agarwal@linaro.org>");
