@@ -47,6 +47,18 @@ static const char *gbaudio_map_controlid(struct gbaudio_codec_info *gbcodec,
 	return NULL;
 }
 
+static __u8 gbaudio_map_widgetname(struct gbaudio_codec_info *gbcodec,
+					  const char *name)
+{
+	struct gbaudio_widget *widget;
+
+	list_for_each_entry(widget, &gbcodec->widget_list, list) {
+		if (!strncmp(widget->name, name, NAME_SIZE))
+			return widget->id;
+	}
+	return -1;
+}
+
 static const char *gbaudio_map_widgetid(struct gbaudio_codec_info *gbcodec,
 					  __u8 widget_id)
 {
@@ -484,6 +496,34 @@ static int gbaudio_tplg_create_wcontrol(struct gbaudio_codec_info *gb,
 	return ret;
 }
 
+static int gbaudio_widget_event(struct snd_soc_dapm_widget *w,
+				struct snd_kcontrol *kcontrol, int event)
+{
+	__u8 wid;
+	int ret;
+	struct snd_soc_codec *codec = w->codec;
+	struct gbaudio_codec_info *gbcodec = snd_soc_codec_get_drvdata(codec);
+
+	dev_dbg(codec->dev, "%s %s %d\n", __func__, w->name, event);
+
+	/* map name to widget id */
+	wid = gbaudio_map_widgetname(gbcodec, w->name);
+	if (wid < 0) {
+		dev_err(codec->dev, "Invalid widget name:%s\n", w->name);
+		return -EINVAL;
+	}
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		ret = gb_audio_gb_enable_widget(gbcodec->mgmt_connection, wid);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		ret = gb_audio_gb_disable_widget(gbcodec->mgmt_connection, wid);
+		break;
+	}
+	return ret;
+}
+
 static int gbaudio_tplg_create_widget(struct gbaudio_codec_info *gbcodec,
 				      struct snd_soc_dapm_widget *dw,
 				      struct gb_audio_widget *w)
@@ -558,32 +598,47 @@ static int gbaudio_tplg_create_widget(struct gbaudio_codec_info *gbcodec,
 		break;
 	case snd_soc_dapm_switch:
 		*dw = (struct snd_soc_dapm_widget)
-			SND_SOC_DAPM_SWITCH(w->name, SND_SOC_NOPM, 0, 0,
-					    widget_kctls);
+			SND_SOC_DAPM_SWITCH_E(w->name, SND_SOC_NOPM, 0, 0,
+					    widget_kctls, gbaudio_widget_event,
+					    SND_SOC_DAPM_PRE_PMU |
+					    SND_SOC_DAPM_POST_PMD);
 		break;
 	case snd_soc_dapm_pga:
 		*dw = (struct snd_soc_dapm_widget)
-			SND_SOC_DAPM_PGA(w->name, SND_SOC_NOPM, 0, 0, NULL, 0);
+			SND_SOC_DAPM_PGA_E(w->name, SND_SOC_NOPM, 0, 0, NULL, 0,
+					   gbaudio_widget_event,
+					   SND_SOC_DAPM_PRE_PMU |
+					   SND_SOC_DAPM_POST_PMD);
 		break;
 	case snd_soc_dapm_mixer:
 		*dw = (struct snd_soc_dapm_widget)
-			SND_SOC_DAPM_MIXER(w->name, SND_SOC_NOPM, 0, 0, NULL,
-					   0);
+			SND_SOC_DAPM_MIXER_E(w->name, SND_SOC_NOPM, 0, 0, NULL,
+					   0, gbaudio_widget_event,
+					   SND_SOC_DAPM_PRE_PMU |
+					   SND_SOC_DAPM_POST_PMD);
 		break;
 	case snd_soc_dapm_mux:
 		*dw = (struct snd_soc_dapm_widget)
-			SND_SOC_DAPM_MUX(w->name, SND_SOC_NOPM, 0, 0,
-					 widget_kctls);
+			SND_SOC_DAPM_MUX_E(w->name, SND_SOC_NOPM, 0, 0,
+					 widget_kctls, gbaudio_widget_event,
+					 SND_SOC_DAPM_PRE_PMU |
+					 SND_SOC_DAPM_POST_PMD);
 		break;
 	case snd_soc_dapm_aif_in:
 		*dw = (struct snd_soc_dapm_widget)
-			SND_SOC_DAPM_AIF_IN(w->name, w->sname, 0, SND_SOC_NOPM,
-					    0, 0);
+			SND_SOC_DAPM_AIF_IN_E(w->name, w->sname, 0,
+					      SND_SOC_NOPM,
+					      0, 0, gbaudio_widget_event,
+					      SND_SOC_DAPM_PRE_PMU |
+					      SND_SOC_DAPM_POST_PMD);
 		break;
 	case snd_soc_dapm_aif_out:
 		*dw = (struct snd_soc_dapm_widget)
-			SND_SOC_DAPM_AIF_OUT(w->name, w->sname, 0, SND_SOC_NOPM,
-					     0, 0);
+			SND_SOC_DAPM_AIF_OUT_E(w->name, w->sname, 0,
+					       SND_SOC_NOPM,
+					       0, 0, gbaudio_widget_event,
+					       SND_SOC_DAPM_PRE_PMU |
+					       SND_SOC_DAPM_POST_PMD);
 		break;
 	default:
 		ret = -EINVAL;
