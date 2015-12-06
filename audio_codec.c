@@ -20,6 +20,48 @@
 static DEFINE_MUTEX(gb_codec_list_lock);
 static LIST_HEAD(gb_codec_list);
 
+/* APB1-GBSPK source */
+static const char * const gbcodec_apb1_src[] = {"Stereo", "Left", "Right"};
+
+static const SOC_ENUM_SINGLE_DECL(
+        gbcodec_apb1_rx_enum, GBCODEC_APB1_MUX_REG, 0, gbcodec_apb1_src);
+
+static const struct snd_kcontrol_new gbcodec_apb1_rx_mux =
+        SOC_DAPM_ENUM("APB1 source", gbcodec_apb1_rx_enum);
+
+static int gbcodec_spk_event(struct snd_soc_dapm_widget *w,
+					struct snd_kcontrol *k, int event)
+{
+	/* Ensure GB speaker is connected */
+
+	return 0;
+}
+
+static const struct snd_soc_dapm_widget gbcodec_dapm_widgets[] = {
+        SND_SOC_DAPM_SPK("Spk", gbcodec_spk_event),
+        SND_SOC_DAPM_OUTPUT("SPKOUT"),
+        //SND_SOC_DAPM_SWITCH("SPK Amp", SND_SOC_NOPM, 0, 0, &spk_amp_ctl),
+        SND_SOC_DAPM_PGA("SPK DAC", SND_SOC_NOPM, 0, 0, NULL, 0),
+        SND_SOC_DAPM_MIXER("SPK Mixer", SND_SOC_NOPM, 0, 0, NULL, 0),
+        SND_SOC_DAPM_MUX("APB1_RX Mux", SND_SOC_NOPM, 0, 0,
+                         &gbcodec_apb1_rx_mux),
+        SND_SOC_DAPM_AIF_IN("APB1RX", "AIF1 Playback", 0, SND_SOC_NOPM, 0,
+                            0),
+};
+
+static const struct snd_soc_dapm_route gbcodec_dapm_routes[] = {
+        /* Playback path */
+        {"Spk", NULL, "SPKOUT"},
+        {"SPKOUT", NULL, "SPK Amp"},
+        {"SPK Amp", "Switch", "SPK DAC"},
+        {"SPK DAC", NULL, "SPK Mixer"},
+
+        {"SPK Mixer", NULL, "APB1_RX Mux"},
+
+        {"APB1_RX Mux", "Left", "APB1RX"},
+        {"APB1_RX Mux", "Right", "APB1RX"},
+        {"APB1_RX Mux", "Stereo", "APB1RX"},
+};
 
 /*
  * codec DAI ops
@@ -359,6 +401,11 @@ static int gbcodec_probe(struct snd_soc_codec *codec)
 
 	gbcodec->codec = codec;
 
+	/* Update remaining routes, controls, widgets, etc */
+	snd_soc_dapm_new_controls(&codec->dapm, gbcodec_dapm_widgets,
+				  ARRAY_SIZE(gbcodec_dapm_widgets));
+	snd_soc_dapm_add_routes(&codec->dapm, gbcodec_dapm_routes,
+				ARRAY_SIZE(gbcodec_dapm_routes));
 	return 0;
 }
 
