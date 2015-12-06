@@ -31,6 +31,7 @@ gb-es2-y := es2.o
 gb-db3-y := db3-platform.o
 gb-audio-codec-y := audio_codec.o audio_topology.o
 gb-audio-gb-y := audio_gb.o
+gb-audio-apbridgea-y := audio_apbridgea.o
 gb-audio-manager-y += gb_audio_manager.o
 gb-audio-manager-y += gb_audio_manager_module.o
 
@@ -45,6 +46,7 @@ obj-m += gb-raw.o
 obj-m += gb-es2.o
 obj-m += gb-db3.o
 obj-m += gb-audio-gb.o
+obj-m += gb-audio-apbridgea.o
 obj-m += gb-audio-manager.o
 ifeq ($(CONFIG_SND_SOC_DYNAMIC_DAILINK),y)
  obj-m += gb-audio-codec.o
