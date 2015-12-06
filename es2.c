@@ -841,6 +841,7 @@ int gb_audio_apbridgea_io(struct gb_connection *connection, __u16 i2s_port,
 			       dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
 			       cportid, i2s_port, req, size, ES2_TIMEOUT);
 }
+EXPORT_SYMBOL_GPL(gb_audio_apbridgea_io);
 
 /*
  * The ES2 USB Bridge device has 15 endpoints
