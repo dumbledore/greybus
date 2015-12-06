@@ -424,12 +424,19 @@ static struct snd_soc_codec_driver soc_codec_dev_gbcodec = {
 /*
  * GB codec DAI link related
  */
+extern struct snd_soc_ops msm8994_mi2s_be_ops;
+extern int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+				struct snd_pcm_hw_params *params);
+
 static struct snd_soc_dai_link gbaudio_dailink = {
 	.name = "PRI_MI2S_RX",
 	.stream_name = "Primary MI2S Playback",
 	.platform_name = "msm-pcm-routing",
 	.cpu_dai_name = "msm-dai-q6-mi2s.0",
 	.no_pcm = 1,
+	.be_id = 34,
+	.be_hw_params_fixup = msm_tx_be_hw_params_fixup,
+	.ops = &msm8994_mi2s_be_ops,
 	.ignore_suspend = 1,
 };
 
