@@ -181,3 +181,8 @@ int gb_audio_apbridgea_stop_rx(struct gb_connection *connection, __u16 i2s_port)
 				     true);
 }
 EXPORT_SYMBOL_GPL(gb_audio_apbridgea_stop_rx);
+
+MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("greybus:audio-apbridgea");
+MODULE_DESCRIPTION("Greybus Special APBridgeA Audio Protocol library");
+MODULE_AUTHOR("Mark Greer <mgreer@animalcreek.com>");
