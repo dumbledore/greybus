@@ -826,8 +826,8 @@ out:
 	return retval;
 }
 
-int gb_audio_apbridgea_io(struct gb_connection *connection, __u16 i2s_port,
-			  __u16 cportid, void *req, __u16 size, bool tx)
+int gb_audio_apbridgea_io(struct gb_connection *connection, void *req,
+			  __u16 size, bool tx)
 {
 	struct gb_host_device *hd = connection->hd;
 	struct es2_ap_dev *es2 = hd_to_es2(hd);
@@ -839,7 +839,7 @@ int gb_audio_apbridgea_io(struct gb_connection *connection, __u16 i2s_port,
 	return usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
 			       REQUEST_AUDIO_APBRIDGEA,
 			       dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
-			       cportid, i2s_port, req, size, ES2_TIMEOUT);
+			       0, 0, req, size, ES2_TIMEOUT);
 }
 EXPORT_SYMBOL_GPL(gb_audio_apbridgea_io);
 
