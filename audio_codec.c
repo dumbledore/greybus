@@ -148,7 +148,7 @@ static void gbcodec_shutdown(struct snd_pcm_substream *substream,
 	ret = gb_audio_apbridgea_unregister_cport(gb_dai->connection, i2s_port,
 						cportid);
 
-	dev_dbg(dai->dev, "Register %s:%d DAI, ret:%d\n", dai->name, cportid,
+	dev_dbg(dai->dev, "Unregister %s:%d DAI, ret:%d\n", dai->name, cportid,
 		ret);
 
 	return;
@@ -406,14 +406,14 @@ static int gbcodec_probe(struct snd_soc_codec *codec)
 	ret = snd_soc_dapm_new_controls(&codec->dapm, gbcodec_dapm_widgets,
 				  ARRAY_SIZE(gbcodec_dapm_widgets));
 	if (ret) {
-		dev_err(codec->dev, "%d:Error while adding widgets\n");
+		dev_err(codec->dev, "%d:Error while adding widgets\n", ret);
 		return ret;
 	}
 
 	ret = snd_soc_dapm_add_routes(&codec->dapm, gbcodec_dapm_routes,
 				ARRAY_SIZE(gbcodec_dapm_routes));
 	if (ret)
-		dev_err(codec->dev, "%d:Error while adding routes\n");
+		dev_err(codec->dev, "%d:Error while adding routes\n", ret);
 
 	return ret;
 }
