@@ -124,14 +124,14 @@ static void gbcodec_shutdown(struct snd_pcm_substream *substream,
 	}
 
 	/* deactivate rx/tx */
-	cportid = gb_dai->connection->hd_cport_id;
+	cportid = gb_dai->connection->intf_cport_id;
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_CAPTURE:
-		ret = gb_audio_gb_deactivate_rx(gb_dai->connection, cportid);
+		ret = gb_audio_gb_deactivate_rx(gb->mgmt_connection, cportid);
 		break;
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		ret = gb_audio_gb_deactivate_tx(gb_dai->connection, cportid);
+		ret = gb_audio_gb_deactivate_tx(gb->mgmt_connection, cportid);
 		break;
 	default:
 		dev_err(dai->dev, "Invalid stream type during shutdown\n");
@@ -146,10 +146,10 @@ static void gbcodec_shutdown(struct snd_pcm_substream *substream,
 	/* un register cport */
 	i2s_port = 0;	/* fixed for now */
 	ret = gb_audio_apbridgea_unregister_cport(gb_dai->connection, i2s_port,
-						cportid);
+					gb_dai->connection->hd_cport_id);
 
-	dev_dbg(dai->dev, "Unregister %s:%d DAI, ret:%d\n", dai->name, cportid,
-		ret);
+	dev_dbg(dai->dev, "Unregister %s:%d DAI, ret:%d\n", dai->name,
+		gb_dai->connection->hd_cport_id, ret);
 
 	return;
 }
@@ -202,8 +202,8 @@ static int gbcodec_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* fetch current configuration */
-	data_cport = gb_dai->connection->hd_cport_id;
-	ret = gb_audio_gb_get_pcm(gb_dai->connection, data_cport, &format,
+	data_cport = gb_dai->connection->intf_cport_id;
+	ret = gb_audio_gb_get_pcm(gb->mgmt_connection, data_cport, &format,
 				  &rate, &channels, &sig_bits);
 
 	if (ret) {
@@ -236,7 +236,7 @@ static int gbcodec_hw_params(struct snd_pcm_substream *substream,
 	if (change != 1)
 		return 0;
 
-	ret = gb_audio_gb_set_pcm(gb_dai->connection, data_cport, format,
+	ret = gb_audio_gb_set_pcm(gb->mgmt_connection, data_cport, format,
 				  rate, channels, sig_bits);
 	if (ret) {
 		dev_err(dai->dev, "%d: Error during set_pcm\n", ret);
@@ -279,14 +279,14 @@ static int gbcodec_prepare(struct snd_pcm_substream *substream,
 	}
 
 	/* deactivate rx/tx */
-	data_cport = gb_dai->connection->hd_cport_id;
+	data_cport = gb_dai->connection->intf_cport_id;
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_CAPTURE:
-		ret = gb_audio_gb_activate_rx(gb_dai->connection, data_cport);
+		ret = gb_audio_gb_activate_rx(gb->mgmt_connection, data_cport);
 		break;
 	case SNDRV_PCM_STREAM_PLAYBACK:
-		ret = gb_audio_gb_activate_tx(gb_dai->connection, data_cport);
+		ret = gb_audio_gb_activate_tx(gb->mgmt_connection, data_cport);
 		break;
 	default:
 		dev_err(dai->dev, "Invalid stream type %d during prepare\n",
