@@ -874,14 +874,16 @@ int gb_audio_apbridgea_io(struct gb_connection *connection, void *req,
 	struct gb_host_device *hd = connection->hd;
 	struct es2_ap_dev *es2 = hd_to_es2(hd);
 	struct usb_device *udev = es2->usb_dev;
+	int ret;
 	__u8 dir;
 
 	dir = tx ? USB_DIR_OUT : USB_DIR_IN;
 
-	return usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
-			       REQUEST_AUDIO_APBRIDGEA,
-			       dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
-			       0, 0, req, size, ES2_TIMEOUT);
+	ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+			      REQUEST_AUDIO_APBRIDGEA,
+			      dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
+			      0, 0, req, size, ES2_TIMEOUT);
+	return (ret < 0) ? ret : 0;
 }
 EXPORT_SYMBOL_GPL(gb_audio_apbridgea_io);
 
