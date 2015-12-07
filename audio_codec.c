@@ -723,7 +723,7 @@ static int gbaudio_codec_probe(struct gb_connection *connection)
 		goto topology_error;
 	}
 	gbcodec->topology = topology;
-	
+
 	/* update codec info */
 	soc_codec_dev_gbcodec.controls = gbcodec->kctls;
 	soc_codec_dev_gbcodec.num_controls = gbcodec->num_kcontrols;
@@ -821,7 +821,7 @@ static void gbaudio_codec_remove(struct gb_connection *connection)
 	snd_soc_unregister_codec(dev);
 	dev->driver = NULL;
 	gbaudio_tplg_release(gbcodec);
-	devm_kfree(dev, gbcodec->topology);
+	kfree(gbcodec->topology);
 	gbcodec->mgmt_connection = NULL;
 	mutex_lock(&gbcodec->lock);
 	gbcodec->codec_registered = 0;

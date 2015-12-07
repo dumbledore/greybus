@@ -1046,7 +1046,8 @@ void gbaudio_tplg_release(struct gbaudio_codec_info *gbcodec)
 		list_del(&control->list);
 		devm_kfree(gbcodec->dev, control);
 	}
-	devm_kfree(gbcodec->dev, gbcodec->kctls);
+	if (gbcodec->kctls)
+		devm_kfree(gbcodec->dev, gbcodec->kctls);
 
 	/* release widget controls */
 	list_for_each_entry_safe(control, _control, &gbcodec->widget_ctl_list,
@@ -1061,10 +1062,12 @@ void gbaudio_tplg_release(struct gbaudio_codec_info *gbcodec)
 		list_del(&widget->list);
 		devm_kfree(gbcodec->dev, widget);
 	}
-	devm_kfree(gbcodec->dev, gbcodec->widgets);
+	if (gbcodec->widgets)
+		devm_kfree(gbcodec->dev, gbcodec->widgets);
 
 	/* release routes */
-	devm_kfree(gbcodec->dev, gbcodec->routes);
+	if (gbcodec->routes)
+		devm_kfree(gbcodec->dev, gbcodec->routes);
 
 	/* release DAIs */
 	mutex_lock(&gbcodec->lock);
