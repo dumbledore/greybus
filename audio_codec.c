@@ -397,16 +397,25 @@ static struct snd_soc_dai_ops gbcodec_dai_ops = {
  */
 static int gbcodec_probe(struct snd_soc_codec *codec)
 {
+	int ret;
 	struct gbaudio_codec_info *gbcodec = snd_soc_codec_get_drvdata(codec);
 
 	gbcodec->codec = codec;
 
 	/* Update remaining routes, controls, widgets, etc */
-	snd_soc_dapm_new_controls(&codec->dapm, gbcodec_dapm_widgets,
+	ret = snd_soc_dapm_new_controls(&codec->dapm, gbcodec_dapm_widgets,
 				  ARRAY_SIZE(gbcodec_dapm_widgets));
-	snd_soc_dapm_add_routes(&codec->dapm, gbcodec_dapm_routes,
+	if (ret) {
+		dev_err(codec->dev, "%d:Error while adding widgets\n");
+		return ret;
+	}
+
+	ret = snd_soc_dapm_add_routes(&codec->dapm, gbcodec_dapm_routes,
 				ARRAY_SIZE(gbcodec_dapm_routes));
-	return 0;
+	if (ret)
+		dev_err(codec->dev, "%d:Error while adding routes\n");
+
+	return ret;
 }
 
 static int gbcodec_remove(struct snd_soc_codec *codec)
