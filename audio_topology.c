@@ -131,7 +131,7 @@ static int gbcodec_mixer_ctl_get(struct snd_kcontrol *kcontrol,
 	info = (struct gb_audio_ctl_elem_info *)data->info;
 
 	ret = gb_audio_gb_get_control(gb->mgmt_connection, data->ctl_id,
-				      -1, &gbvalue);
+				      GB_AUDIO_INVALID_INDEX, &gbvalue);
 	if (ret) {
 		dev_err(codec->dev, "%d:Error in mixer_ctl_get() for %s\n", ret,
 			kcontrol->id.name);
@@ -205,7 +205,7 @@ static int gbcodec_mixer_ctl_put(struct snd_kcontrol *kcontrol,
 		return ret;
 
 	ret = gb_audio_gb_set_control(gb->mgmt_connection, data->ctl_id,
-				      -1, &gbvalue);
+				      GB_AUDIO_INVALID_INDEX, &gbvalue);
 	if (ret) {
 		dev_err(codec->dev, "%d:Error in mixer_ctl_put() for %s\n", ret,
 			kcontrol->id.name);
@@ -276,7 +276,7 @@ static int gbcodec_mixer_dapm_ctl_get(struct snd_kcontrol *kcontrol,
 			 kcontrol->id.name);
 
 	ret = gb_audio_gb_get_control(gb->mgmt_connection, data->ctl_id,
-				      -1, &gbvalue);
+				      GB_AUDIO_INVALID_INDEX, &gbvalue);
 	if (ret) {
 		dev_err(codec->dev, "%d:Error in mixer_ctl_get() for %s\n", ret,
 			kcontrol->id.name);
@@ -327,7 +327,8 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
 		gbvalue.value.integer_value[0] =
 			ucontrol->value.integer.value[0];
 		ret = gb_audio_gb_set_control(gb->mgmt_connection,
-					      data->ctl_id, -1, &gbvalue);
+					      data->ctl_id,
+					      GB_AUDIO_INVALID_INDEX, &gbvalue);
 		if (ret) {
 			dev_err(codec->dev,
 				"%d:Error in mixer_ctl_get() for %s\n", ret,
