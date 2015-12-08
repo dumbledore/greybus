@@ -545,8 +545,8 @@ static int audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx)
 
 	dir = tx ? USB_DIR_OUT : USB_DIR_IN;
 
-	dr->bRequestType = REQUEST_AUDIO_APBRIDGEA;
-	dr->bRequest = dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE;
+	dr->bRequest = REQUEST_AUDIO_APBRIDGEA;
+	dr->bRequestType = dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE;
 	dr->wValue = 0;
 	dr->wIndex = 0;
 	dr->wLength = cpu_to_le16(size);
