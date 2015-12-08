@@ -138,10 +138,8 @@ static void gbcodec_shutdown(struct snd_pcm_substream *substream,
 		return;
 	}
 
-	if (ret) {
+	if (ret)
 		dev_err(dai->dev, "%d:Error during deactivate\n", ret);
-		return;
-	}
 
 	/* un register cport */
 	i2s_port = 0;	/* fixed for now */
@@ -158,7 +156,7 @@ static int gbcodec_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *hwparams,
 			     struct snd_soc_dai *dai)
 {
-	int ret, change, found;
+	int ret, found;
 	uint8_t sig_bits, channels;
 	uint32_t format, rate;
 	uint16_t data_cport;
@@ -188,54 +186,29 @@ static int gbcodec_hw_params(struct snd_pcm_substream *substream,
 			params_channels(hwparams));
 		return -EINVAL;
 	}
+	channels = params_channels(hwparams);
 
 	if (params_rate(hwparams) != 48000) {
 		dev_err(dai->dev, "Invalid sampling rate:%d\n",
 			params_rate(hwparams));
 		return -EINVAL;
 	}
+	rate = GB_AUDIO_PCM_RATE_48000;
 
 	if (params_format(hwparams) != SNDRV_PCM_FORMAT_S16_LE) {
 		dev_err(dai->dev, "Invalid format:%d\n",
 			params_format(hwparams));
 		return -EINVAL;
 	}
+	format = GB_AUDIO_PCM_FMT_S16_LE;
 
-	/* fetch current configuration */
 	data_cport = gb_dai->connection->intf_cport_id;
-	ret = gb_audio_gb_get_pcm(gb->mgmt_connection, data_cport, &format,
-				  &rate, &channels, &sig_bits);
-
-	if (ret) {
-		dev_err(dai->dev, "%d:Error while fetching pcm configuration\n",
-			ret);
-		return ret;
-	}
-
-	if (channels != params_channels(hwparams)) {
-		channels = params_channels(hwparams);
-		change = 1;
-	}
-
-	if (rate != params_rate(hwparams)) {
-		rate = params_rate(hwparams);
-		change = 1;
-	}
-
-	if (format != params_format(hwparams)) {
-		format = params_format(hwparams);
-		change = 1;
-	}
-
 	/* XXX check impact of sig_bit
 	 * it should not change ideally
 	 */
 
-	dev_dbg(dai->dev, "rate:%d, channel %d, format %d, sig_bits:%d\n", rate,
-		channels, format, sig_bits);
-	if (change != 1)
-		return 0;
-
+	dev_dbg(dai->dev, "cport:%d, rate:%d, channel %d, format %d, sig_bits:%d\n",
+		data_cport, rate, channels, format, sig_bits);
 	ret = gb_audio_gb_set_pcm(gb->mgmt_connection, data_cport, format,
 				  rate, channels, sig_bits);
 	if (ret) {
@@ -283,9 +256,41 @@ static int gbcodec_prepare(struct snd_pcm_substream *substream,
 
 	switch (substream->stream) {
 	case SNDRV_PCM_STREAM_CAPTURE:
+		ret = gb_audio_gb_set_rx_data_size(gb->mgmt_connection,
+						   data_cport, 192);
+		if (ret) {
+			dev_err(dai->dev,
+				"%d:Error during set_rx_data_size, cport:%d\n",
+				ret, data_cport);
+			return ret;
+		}
+		ret = gb_audio_apbridgea_set_rx_data_size(gb_dai->connection, 0,
+							  192);
+		if (ret) {
+			dev_err(dai->dev,
+				"%d:Error during apbridgea_set_rx_data_size\n",
+				ret);
+			return ret;
+		}
 		ret = gb_audio_gb_activate_rx(gb->mgmt_connection, data_cport);
 		break;
 	case SNDRV_PCM_STREAM_PLAYBACK:
+		ret = gb_audio_gb_set_tx_data_size(gb->mgmt_connection,
+						   data_cport, 192);
+		if (ret) {
+			dev_err(dai->dev,
+				"%d:Error during module set_tx_data_size, cport:%d\n",
+				ret, data_cport);
+			return ret;
+		}
+		ret = gb_audio_apbridgea_set_tx_data_size(gb_dai->connection, 0,
+							  192);
+		if (ret) {
+			dev_err(dai->dev,
+				"%d:Error during apbridgea set_tx_data_size, cport\n",
+				ret);
+			return ret;
+		}
 		ret = gb_audio_gb_activate_tx(gb->mgmt_connection, data_cport);
 		break;
 	default:

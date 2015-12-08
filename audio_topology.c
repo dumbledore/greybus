@@ -47,13 +47,25 @@ static const char *gbaudio_map_controlid(struct gbaudio_codec_info *gbcodec,
 	return NULL;
 }
 
-static __u8 gbaudio_map_widgetname(struct gbaudio_codec_info *gbcodec,
+static int gbaudio_map_widgetname(struct gbaudio_codec_info *gbcodec,
 					  const char *name)
 {
 	struct gbaudio_widget *widget;
+	char widget_name[NAME_SIZE];
+	char prefix_name[NAME_SIZE];
+
+	snprintf(prefix_name, NAME_SIZE, "GB %d ", gbcodec->dev_id);
+	if (strncmp(name, prefix_name, strlen(prefix_name)))
+		return -1;
+
+	strncpy(widget_name, name+strlen(prefix_name), NAME_SIZE);
+	dev_dbg(gbcodec->dev, "widget_name:%s, truncated widget_name:%s\n",
+		name, widget_name);
 
 	list_for_each_entry(widget, &gbcodec->widget_list, list) {
-		if (!strncmp(widget->name, name, NAME_SIZE))
+		dev_err(gbcodec->dev, "%d:widget->name:%s\n", widget->id,
+			widget->name);
+		if (!strncmp(widget->name, widget_name, NAME_SIZE))
 			return widget->id;
 	}
 	return -1;
@@ -133,7 +145,7 @@ static int gbcodec_mixer_ctl_get(struct snd_kcontrol *kcontrol,
 	ret = gb_audio_gb_get_control(gb->mgmt_connection, data->ctl_id,
 				      GB_AUDIO_INVALID_INDEX, &gbvalue);
 	if (ret) {
-		dev_err(codec->dev, "%d:Error in mixer_ctl_get() for %s\n", ret,
+		dev_err(codec->dev, "%d:Error in %s for %s\n", ret, __func__,
 			kcontrol->id.name);
 		return ret;
 	}
@@ -207,7 +219,7 @@ static int gbcodec_mixer_ctl_put(struct snd_kcontrol *kcontrol,
 	ret = gb_audio_gb_set_control(gb->mgmt_connection, data->ctl_id,
 				      GB_AUDIO_INVALID_INDEX, &gbvalue);
 	if (ret) {
-		dev_err(codec->dev, "%d:Error in mixer_ctl_put() for %s\n", ret,
+		dev_err(codec->dev, "%d:Error in %s for %s\n", ret, __func__,
 			kcontrol->id.name);
 	}
 
@@ -278,7 +290,7 @@ static int gbcodec_mixer_dapm_ctl_get(struct snd_kcontrol *kcontrol,
 	ret = gb_audio_gb_get_control(gb->mgmt_connection, data->ctl_id,
 				      GB_AUDIO_INVALID_INDEX, &gbvalue);
 	if (ret) {
-		dev_err(codec->dev, "%d:Error in mixer_ctl_get() for %s\n", ret,
+		dev_err(codec->dev, "%d:Error in %s for %s\n", ret, __func__,
 			kcontrol->id.name);
 		return ret;
 	}
@@ -331,7 +343,7 @@ static int gbcodec_mixer_dapm_ctl_put(struct snd_kcontrol *kcontrol,
 					      GB_AUDIO_INVALID_INDEX, &gbvalue);
 		if (ret) {
 			dev_err(codec->dev,
-				"%d:Error in mixer_ctl_get() for %s\n", ret,
+				"%d:Error in %s for %s\n", ret, __func__,
 				kcontrol->id.name);
 		}
 	}
@@ -500,7 +512,7 @@ static int gbaudio_tplg_create_wcontrol(struct gbaudio_codec_info *gb,
 static int gbaudio_widget_event(struct snd_soc_dapm_widget *w,
 				struct snd_kcontrol *kcontrol, int event)
 {
-	__u8 wid;
+	int wid;
 	int ret;
 	struct snd_soc_codec *codec = w->codec;
 	struct gbaudio_codec_info *gbcodec = snd_soc_codec_get_drvdata(codec);
@@ -522,6 +534,9 @@ static int gbaudio_widget_event(struct snd_soc_dapm_widget *w,
 		ret = gb_audio_gb_disable_widget(gbcodec->mgmt_connection, wid);
 		break;
 	}
+	if (ret)
+		dev_err(codec->dev, "%d: widget, event:%d failed:%d\n", wid,
+			event, ret);
 	return ret;
 }
 
