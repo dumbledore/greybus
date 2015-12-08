@@ -98,6 +98,15 @@ struct gb_host_device *gb_hd_create(struct gb_hd_driver *driver,
 }
 EXPORT_SYMBOL_GPL(gb_hd_create);
 
+int gb_audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx)
+{
+	if ((!hd) || (!hd->driver) || (!hd->driver->audio_io))
+		return -EINVAL;
+
+	return hd->driver->audio_io(hd, req, size, tx);
+}
+EXPORT_SYMBOL_GPL(gb_audio_io);
+
 static int gb_hd_create_svc_connection(struct gb_host_device *hd)
 {
 	hd->svc_connection = gb_connection_create_static(hd, GB_SVC_CPORT_ID,
