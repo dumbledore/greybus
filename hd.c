@@ -106,6 +106,15 @@ struct gb_host_device *gb_hd_create(struct gb_hd_driver *driver,
 }
 EXPORT_SYMBOL_GPL(gb_hd_create);
 
+int gb_audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx)
+{
+	if ((!hd) || (!hd->driver) || (!hd->driver->audio_io))
+		return -EINVAL;
+
+	return hd->driver->audio_io(hd, req, size, tx);
+}
+EXPORT_SYMBOL_GPL(gb_audio_io);
+
 int gb_hd_add(struct gb_host_device *hd)
 {
 	int ret;

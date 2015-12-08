@@ -554,6 +554,56 @@ static int latency_tag_disable(struct gb_host_device *hd, u16 cport_id)
 	return retval;
 }
 
+static void audio_urb_complete(struct urb *urb)
+{
+	struct usb_ctrlrequest *dr = urb->context;
+
+	kfree(dr);
+	usb_free_urb(urb);
+}
+
+static int audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx)
+{
+	struct es2_ap_dev *es2 = hd_to_es2(hd);
+	struct usb_device *udev = es2->usb_dev;
+	struct urb *urb;
+	struct usb_ctrlrequest *dr;
+	int ret;
+	u8 dir;
+
+	/*
+	 * All allocations need to be GFP_ATOMIC so this call can be made in
+	 * atomic context, as the audio stack sometimes needs.
+	 */
+	urb = usb_alloc_urb(0, GFP_ATOMIC);
+	if (!urb)
+		return -ENOMEM;
+
+	dr = kmalloc(sizeof(*dr), GFP_ATOMIC);
+	if (!dr) {
+		usb_free_urb(urb);
+		return -ENOMEM;
+	}
+
+	dir = tx ? USB_DIR_OUT : USB_DIR_IN;
+
+	dr->bRequestType = REQUEST_AUDIO_APBRIDGEA;
+	dr->bRequest = dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE;
+	dr->wValue = 0;
+	dr->wIndex = 0;
+	dr->wLength = cpu_to_le16(size);
+
+	usb_fill_control_urb(urb, udev, usb_sndctrlpipe(udev, 0),
+			     (unsigned char *)dr, req, size,
+			     audio_urb_complete, dr);
+	ret = usb_submit_urb(urb, GFP_ATOMIC);
+	if (ret) {
+		usb_free_urb(urb);
+		kfree(dr);
+	}
+	return ret;
+}
+
 static struct gb_hd_driver es2_driver = {
 	.hd_priv_size		= sizeof(struct es2_ap_dev),
 	.message_send		= message_send,
@@ -561,6 +611,7 @@ static struct gb_hd_driver es2_driver = {
 	.cport_enable		= cport_enable,
 	.latency_tag_enable	= latency_tag_enable,
 	.latency_tag_disable	= latency_tag_disable,
+	.audio_io		= audio_io,
 };
 
 /* Common function to report consistent warnings based on URB status */
@@ -867,25 +918,6 @@ out:
 	kfree(cport_count);
 	return retval;
 }
-
-int gb_audio_apbridgea_io(struct gb_connection *connection, void *req,
-			  __u16 size, bool tx)
-{
-	struct gb_host_device *hd = connection->hd;
-	struct es2_ap_dev *es2 = hd_to_es2(hd);
-	struct usb_device *udev = es2->usb_dev;
-	int ret;
-	__u8 dir;
-
-	dir = tx ? USB_DIR_OUT : USB_DIR_IN;
-
-	ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
-			      REQUEST_AUDIO_APBRIDGEA,
-			      dir | USB_TYPE_VENDOR | USB_RECIP_INTERFACE,
-			      0, 0, req, size, ES2_TIMEOUT);
-	return (ret < 0) ? ret : 0;
-}
-EXPORT_SYMBOL_GPL(gb_audio_apbridgea_io);
 
 /*
  * The ES2 USB Bridge device has 15 endpoints

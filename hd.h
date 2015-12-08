@@ -23,6 +23,8 @@ struct gb_hd_driver {
 	void (*message_cancel)(struct gb_message *message);
 	int (*latency_tag_enable)(struct gb_host_device *hd, u16 cport_id);
 	int (*latency_tag_disable)(struct gb_host_device *hd, u16 cport_id);
+	int (*audio_io)(struct gb_host_device *hd, void *req,
+			u16 size, bool tx);
 };
 
 struct gb_host_device {
@@ -53,6 +55,7 @@ struct gb_host_device *gb_hd_create(struct gb_hd_driver *driver,
 int gb_hd_add(struct gb_host_device *hd);
 void gb_hd_del(struct gb_host_device *hd);
 void gb_hd_put(struct gb_host_device *hd);
+int gb_audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx);
 
 int gb_hd_init(void);
 void gb_hd_exit(void);
