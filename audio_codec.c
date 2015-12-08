@@ -12,6 +12,7 @@
 
 #include "greybus.h"
 #include "audio_codec.h"
+#include "audio_apbridgea.h"
 #include "gb_audio_manager.h"
 
 #define GB_AUDIO_MGMT_DRIVER_NAME	"gb_audio_mgmt"
@@ -221,8 +222,10 @@ static int gbcodec_hw_params(struct snd_pcm_substream *substream,
 	 * set config is always required
 	 * check for mclk_freq as well
 	 */
-	ret = gb_audio_apbridgea_set_config(gb_dai->connection, 0, format,
-					    rate, 0);
+	ret = gb_audio_apbridgea_set_config(gb_dai->connection, 0,
+					    AUDIO_APBRIDGEA_PCM_FMT_16,
+					    AUDIO_APBRIDGEA_PCM_RATE_48000,
+					    6144000);
 	if (ret)
 		dev_err(dai->dev, "%d: Error during set_config\n", ret);
 
