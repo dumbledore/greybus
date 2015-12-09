@@ -508,8 +508,6 @@ static void gbaudio_remove_dailinks(struct gbaudio_codec_info *gbcodec)
 {
 	int i, ret;
 	char prefix_name[NAME_SIZE];
-	char dai_link_name[NAME_SIZE];
-	struct snd_soc_dai_link *dailink = &gbaudio_dailink;
 
 	snprintf(prefix_name, NAME_SIZE, "GB %d", gbcodec->dev_id);
 	ret = snd_soc_update_name_prefix(dev_name(gbcodec->dev), prefix_name);
@@ -519,10 +517,12 @@ static void gbaudio_remove_dailinks(struct gbaudio_codec_info *gbcodec)
 	}
 
 	for (i = 0; i < gbcodec->num_dai_links; i++) {
-		snprintf(dai_link_name, NAME_SIZE, "GB %d.%d PRI_MI2S_RX",
-			 gbcodec->dev_id, i);
-		dev_dbg(gbcodec->dev, "Remove %s: DAI link\n", dailink->name);
-		snd_soc_remove_dai_link(gbcodec->card_name, dailink->name);
+		dev_dbg(gbcodec->dev, "Remove %s: DAI link\n",
+			gbcodec->dailink_name[i]);
+		snd_soc_remove_dai_link(gbcodec->card_name,
+					gbcodec->dailink_name[i]);
+		devm_kfree(gbcodec->dev, gbcodec->dailink_name[i]);
+		gbcodec->dailink_name[i] = NULL;
 	}
 	gbcodec->num_dai_links = 0;
 }
@@ -531,7 +531,7 @@ static int gbaudio_add_dailinks(struct gbaudio_codec_info *gbcodec)
 {
 	int ret, index, i;
 	char prefix_name[NAME_SIZE];
-	char dai_link_name[NAME_SIZE];
+	char *dai_link_name;
 	struct snd_soc_dai_link *dai;
 	struct snd_soc_card *card;
 	struct device *cdev;
@@ -539,7 +539,7 @@ static int gbaudio_add_dailinks(struct gbaudio_codec_info *gbcodec)
 	struct device *dev = gbcodec->dev;
 
 	snprintf(prefix_name, NAME_SIZE, "GB %d", gbcodec->dev_id);
-	ret = snd_soc_update_name_prefix(dev_name(dev), prefix_name);
+	ret = snd_soc_update_name_prefix(gbcodec->name, prefix_name);
 	if (ret) {
 		dev_err(dev, "Failed to set prefix name\n");
 		return ret;
@@ -599,12 +599,14 @@ static int gbaudio_add_dailinks(struct gbaudio_codec_info *gbcodec)
 		dai->platform_of_node = np;
 		dai->platform_name = NULL;
 	}
-	dai->codec_name = dev_name(dev);
+	dai->codec_name = gbcodec->name;
 
-	/* XXX currently, set DAI links for each codec DAI */
-	gbcodec->num_dai_links = gbcodec->num_dais;
+	/* XXX currently, set DAI links = 1 */
+	gbcodec->num_dai_links = 1;
 
 	for (i = 0; i < gbcodec->num_dai_links; i++) {
+		gbcodec->dailink_name[i] = dai_link_name =
+			devm_kzalloc(dev, NAME_SIZE, GFP_KERNEL);
 		snprintf(dai_link_name, NAME_SIZE, "GB %d.%d PRI_MI2S_RX",
 			 gbcodec->dev_id, i);
 		dai->name = dai_link_name;
@@ -670,12 +672,13 @@ static struct gbaudio_codec_info *gbaudio_get_codec(struct device *dev,
 	gbcodec->dev_id = dev_id;
 	dev_set_drvdata(dev, gbcodec);
 	gbcodec->dev = dev;
+	strlcpy(gbcodec->name, dev_name(dev), NAME_SIZE);
 
 	mutex_lock(&gb_codec_list_lock);
 	list_add(&gbcodec->list, &gb_codec_list);
 	mutex_unlock(&gb_codec_list_lock);
 	dev_dbg(dev, "%d:%s Added to codec list\n", gbcodec->dev_id,
-		dev_name(gbcodec->dev));
+		gbcodec->name);
 
 	return gbcodec;
 }
@@ -688,6 +691,7 @@ static void gbaudio_free_codec(struct device *dev,
 			list_empty(&gbcodec->dai_list)) {
 		list_del(&gbcodec->list);
 		mutex_unlock(&gb_codec_list_lock);
+		dev_set_drvdata(dev, NULL);
 		devm_kfree(dev, gbcodec);
 	} else {
 		mutex_unlock(&gb_codec_list_lock);
@@ -711,7 +715,6 @@ static int gbaudio_codec_probe(struct gb_connection *connection)
 	int ret, i;
 	struct gbaudio_codec_info *gbcodec;
 	struct gb_audio_topology *topology;
-	char dai_name[NAME_SIZE];
 	struct gb_audio_manager_module_descriptor desc;
         struct device *dev = &connection->bundle->dev;
 	int dev_id = connection->bundle->id;
@@ -750,12 +753,8 @@ static int gbaudio_codec_probe(struct gb_connection *connection)
 	soc_codec_dev_gbcodec.num_dapm_routes = gbcodec->num_dapm_routes;
 
 	/* update DAI info */
-	for (i = 0; i < gbcodec->num_dais; i++) {
-		snprintf(dai_name, NAME_SIZE, "%s.%d", gbcodec->dais[i].name,
-			 dev_id);
-		gbcodec->dais[i].name = dai_name;
+	for (i = 0; i < gbcodec->num_dais; i++)
 		gbcodec->dais[i].ops = &gbcodec_dai_ops;
-	}
 
 	/* FIXME */
 	dev->driver = &gb_codec_driver;
@@ -784,7 +783,7 @@ static int gbaudio_codec_probe(struct gb_connection *connection)
 	    (gbcodec->dai_added == gbcodec->num_dais)) {
 		dev_dbg(dev, "Inform set_event:%d to above layer\n", 1);
 		/* prepare for the audio manager */
-		strncpy(desc.name, dev_name(dev),
+		strncpy(desc.name, gbcodec->name,
 			GB_AUDIO_MANAGER_MODULE_NAME_LEN); /* todo */
 		desc.slot = 1; /* todo */
 		desc.vid = 2; /* todo */
@@ -867,7 +866,7 @@ static struct gb_protocol gb_audio_mgmt_protocol = {
 
 static int gbaudio_dai_probe(struct gb_connection *connection)
 {
-	int ret;
+	struct gbaudio_dai *dai;
 	struct device *dev = &connection->bundle->dev;
 	int dev_id = connection->bundle->id;
 	struct gbaudio_codec_info *gbcodec = dev_get_drvdata(dev);
@@ -880,9 +879,11 @@ static int gbaudio_dai_probe(struct gb_connection *connection)
 	if (!gbcodec)
 		return -ENOMEM;
 
-	/* update dai_list*/
-	ret = gbaudio_add_dai(gbcodec, connection->hd_cport_id, connection,
+	/* add/update dai_list*/
+	dai = gbaudio_add_dai(gbcodec, connection->intf_cport_id, connection,
 			       NULL);
+	if (!dai)
+		return -ENOMEM;
 
 	/* update dai_added count */
 	mutex_lock(&gbcodec->lock);
@@ -893,7 +894,7 @@ static int gbaudio_dai_probe(struct gb_connection *connection)
 	    (gbcodec->dai_added == gbcodec->num_dais)) {
 		/* prepare for the audio manager */
 		dev_dbg(dev, "Inform set_event:%d to above layer\n", 1);
-		strncpy(desc.name, dev_name(dev),
+		strncpy(desc.name, gbcodec->name,
 			GB_AUDIO_MANAGER_MODULE_NAME_LEN); /* todo */
 		desc.slot = 1; /* todo */
 		desc.vid = 2; /* todo */
@@ -905,7 +906,7 @@ static int gbaudio_dai_probe(struct gb_connection *connection)
 	}
 	mutex_unlock(&gbcodec->lock);
 
-	return ret;
+	return 0;
 }
 
 static void gbaudio_dai_remove(struct gb_connection *connection)

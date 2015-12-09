@@ -677,7 +677,10 @@ static int gbaudio_tplg_create_dai(struct gbaudio_codec_info *gbcodec,
 				   struct snd_soc_dai_driver *gb_dai,
 				   struct gb_audio_dai *dai)
 {
-	gb_dai->name = dai->name;
+	/*
+	 * do not update name here,
+	 * append dev_id before assigning it here
+	 */
 
 	gb_dai->playback.stream_name = dai->playback.stream_name;
 	gb_dai->playback.channels_min = dai->playback.chan_min;
@@ -806,6 +809,7 @@ static int gbaudio_tplg_process_dais(struct gbaudio_codec_info *gbcodec,
 	struct gb_audio_dai *curr;
 	struct gbaudio_dai *dai, *_dai;
 	size_t size;
+	char dai_name[NAME_SIZE];
 
 	size = sizeof(struct snd_soc_dai_driver) * gbcodec->num_dais;
 	gb_dais = devm_kzalloc(gbcodec->dev, size, GFP_KERNEL);
@@ -820,22 +824,15 @@ static int gbaudio_tplg_process_dais(struct gbaudio_codec_info *gbcodec,
 				curr->name);
 			goto error;
 		}
-		dai = devm_kzalloc(gbcodec->dev, sizeof(struct gbaudio_dai),
-				      GFP_KERNEL);
-		if (!dai) {
-			ret = -ENOMEM;
+		/* append dev_id to dai_name */
+		snprintf(dai_name, NAME_SIZE, "%s.%d", curr->name,
+			 gbcodec->dev_id);
+		dai = gbaudio_add_dai(gbcodec, curr->data_cport, NULL,
+				      dai_name);
+		if (!dai)
 			goto error;
-		}
-		dai->data_cport = curr->data_cport;
-		dai->name = curr->name;
-		ret = gbaudio_add_dai(gbcodec, dai->data_cport, NULL,
-				      dai->name);
-		if (ret) {
-			dev_err(gbcodec->dev,
-				"%d:Error while adding DAI to list\n", ret);
-			devm_kfree(gbcodec->dev, dai);
-			goto error;
-		}
+		dev_err(gbcodec->dev, "%s:DAI added\n", dai->name);
+		gb_dais[i].name = dai->name;
 		curr++;
 	}
 	gbcodec->dais = gb_dais;
@@ -938,51 +935,61 @@ static int gbaudio_tplg_process_header(struct gbaudio_codec_info *gbcodec,
 	return 0;
 }
 
-int gbaudio_add_dai(struct gbaudio_codec_info *gbcodec, int data_cport,
-			   struct gb_connection *connection, const char *name)
+struct gbaudio_dai *gbaudio_add_dai(struct gbaudio_codec_info *gbcodec,
+				    int data_cport,
+				    struct gb_connection *connection,
+				    const char *name)
 {
 	int found;
-	struct gbaudio_dai *dai;
+	struct gbaudio_dai *dai, *_dai;
 
 	/* FIXME need to take care for multiple DAIs */
 	mutex_lock(&gbcodec->lock);
 	if (list_empty(&gbcodec->dai_list))
 		goto add_dai;
 
-	list_for_each_entry(dai, &gbcodec->dai_list, list) {
-		if (dai->data_cport != connection->hd_cport_id)
-			continue;
-		found = 1;
-		break;
+	list_for_each_entry_safe(dai, _dai, &gbcodec->dai_list, list) {
+		if (dai->data_cport == data_cport) {
+			found = 1;
+			break;
+		}
+		found = 0;
 	}
 
 	if (found != 1) {
+		dev_err(gbcodec->dev, "%s:DAI not found\n", name);
 		mutex_unlock(&gbcodec->lock);
-		return -EINVAL;
+		return NULL;
 	}
 
 	if (connection)
 		dai->connection = connection;
 
 	if (name)
-		dai->name = name;
+		strlcpy(dai->name, name, NAME_SIZE);
+	dev_dbg(gbcodec->dev, "%d:%s: DAI updated\n", data_cport, dai->name);
 	mutex_unlock(&gbcodec->lock);
-	return 0;
+	return dai;
 
 add_dai:
 	dai = devm_kzalloc(gbcodec->dev, sizeof(*dai), GFP_KERNEL);
 	if (!dai) {
+		dev_err(gbcodec->dev, "%s:DAI Malloc failure\n", name);
 		mutex_unlock(&gbcodec->lock);
-		return -ENOMEM;
+		return NULL;
 	}
 
 	dai->data_cport = data_cport;
 	dai->connection = connection;
-	dai->name = name;
+
+	/* update name */
+	if (name)
+		strlcpy(dai->name, name, NAME_SIZE);
 	list_add(&dai->list, &gbcodec->dai_list);
+	dev_dbg(gbcodec->dev, "%d:%s: DAI added\n", data_cport, dai->name);
 	mutex_unlock(&gbcodec->lock);
 
-	return 0;
+	return dai;
 }
 
 int gbaudio_tplg_parse_data(struct gbaudio_codec_info *gbcodec,
@@ -1004,6 +1011,16 @@ int gbaudio_tplg_parse_data(struct gbaudio_codec_info *gbcodec,
 		return ret;
 	}
 
+	/* process control */
+	controls = (struct gb_audio_control *)gbcodec->control_offset;
+	ret = gbaudio_tplg_process_kcontrols(gbcodec, controls);
+	if (ret) {
+		dev_err(gbcodec->dev,
+			"%d: Error in parsing controls data\n", ret);
+		return ret;
+	}
+	dev_err(gbcodec->dev, "Control parsing finished\n");
+
 	/* process DAI */
 	dais = (struct gb_audio_dai *)gbcodec->dai_offset;
 	ret = gbaudio_tplg_process_dais(gbcodec, dais);
@@ -1023,16 +1040,6 @@ int gbaudio_tplg_parse_data(struct gbaudio_codec_info *gbcodec,
 		return ret;
 	}
 	dev_err(gbcodec->dev, "Widget parsing finished\n");
-
-	/* process control */
-	controls = (struct gb_audio_control *)gbcodec->control_offset;
-	ret = gbaudio_tplg_process_kcontrols(gbcodec, controls);
-	if (ret) {
-		dev_err(gbcodec->dev,
-			"%d: Error in parsing controls data\n", ret);
-		return ret;
-	}
-	dev_err(gbcodec->dev, "Control parsing finished\n");
 
 	/* process route */
 	routes = (struct gb_audio_route *)gbcodec->route_offset;

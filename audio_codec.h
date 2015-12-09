@@ -15,6 +15,7 @@
 #include "greybus_protocols.h"
 
 #define NAME_SIZE	32
+#define MAX_DAIS	2	/* APB1, APB2 */
 
 enum {
 	APB1_PCM = 0,
@@ -89,7 +90,7 @@ struct gbaudio_control {
 
 struct gbaudio_dai {
 	__le16 data_cport;
-	const char *name;
+	char name[NAME_SIZE];
 	struct gb_connection *connection;
 	struct list_head list;
 };
@@ -110,6 +111,7 @@ struct gbaudio_codec_info {
 	struct gb_audio_topology *topology;
 	/* need to share this info to above user space */
         int manager_id;
+	char name[NAME_SIZE];
 
 	/* soc related data */
 	struct snd_soc_codec *codec;
@@ -118,6 +120,7 @@ struct gbaudio_codec_info {
 
 	/* dai_link related */
 	char card_name[NAME_SIZE];
+	char *dailink_name[MAX_DAIS];
 	int num_dai_links;
 
 	/* topology related */
@@ -143,8 +146,10 @@ struct gbaudio_codec_info {
 	struct mutex lock;
 };
 
-int gbaudio_add_dai(struct gbaudio_codec_info *gbcodec, int data_cport,
-			   struct gb_connection *connection, const char *name);
+struct gbaudio_dai *gbaudio_add_dai(struct gbaudio_codec_info *gbcodec,
+				    int data_cport,
+				    struct gb_connection *connection,
+				    const char *name);
 int gbaudio_tplg_parse_data(struct gbaudio_codec_info *gbcodec,
 			       struct gb_audio_topology *tplg_data);
 void gbaudio_tplg_release(struct gbaudio_codec_info *gbcodec);
