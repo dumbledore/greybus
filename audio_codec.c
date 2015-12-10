@@ -848,8 +848,11 @@ static void gbaudio_codec_remove(struct gb_connection *connection)
 static int gbaudio_codec_report_event_recv(u8 type, struct gb_operation *op)
 {
 	struct gb_connection *connection = op->connection;
+	struct gb_audio_streaming_event_request *req = op->request->payload;
 
-	dev_warn(&connection->bundle->dev, "Audio Event received\n");
+	dev_warn(&connection->bundle->dev,
+		 "Audio Event received: cport: %u, event: %u\n",
+		 req->data_cport, req->event);
 
 	return 0;
 }
