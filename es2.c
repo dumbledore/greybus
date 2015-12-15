@@ -555,7 +555,7 @@ static int audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx)
 	dr->wLength = cpu_to_le16(size);
 
 	usb_fill_control_urb(urb, udev, usb_sndctrlpipe(udev, 0),
-			     (unsigned char *)dr, req, size,
+			     (unsigned char *)dr, buf, size,
 			     audio_urb_complete, dr);
 	ret = usb_submit_urb(urb, GFP_ATOMIC);
 	if (ret) {
