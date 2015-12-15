@@ -569,7 +569,7 @@ static int audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx)
 	struct urb *urb;
 	struct usb_ctrlrequest *dr;
 	int ret;
-	u8 dir;
+	u8 dir, *buf;
 
 	/*
 	 * All allocations need to be GFP_ATOMIC so this call can be made in
@@ -579,11 +579,14 @@ static int audio_io(struct gb_host_device *hd, void *req, u16 size, bool tx)
 	if (!urb)
 		return -ENOMEM;
 
-	dr = kmalloc(sizeof(*dr), GFP_ATOMIC);
+	dr = kmalloc(sizeof(*dr) + size, GFP_ATOMIC);
 	if (!dr) {
 		usb_free_urb(urb);
 		return -ENOMEM;
 	}
+
+	buf = (u8 *)dr + sizeof(*dr);
+	memcpy(buf, req, size);
 
 	dir = tx ? USB_DIR_OUT : USB_DIR_IN;
 
