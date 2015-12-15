@@ -61,6 +61,9 @@ static void gb_interface_release(struct device *dev)
 	kfree(intf->product_string);
 	kfree(intf->vendor_string);
 
+	if (intf->control)
+		gb_control_destroy(intf->control);
+
 	kfree(intf);
 }
 
@@ -85,7 +88,6 @@ struct gb_interface *gb_interface_create(struct gb_host_device *hd,
 					 u8 interface_id)
 {
 	struct gb_interface *intf;
-	int retval;
 
 	intf = kzalloc(sizeof(*intf), GFP_KERNEL);
 	if (!intf)
@@ -107,10 +109,10 @@ struct gb_interface *gb_interface_create(struct gb_host_device *hd,
 	device_initialize(&intf->dev);
 	dev_set_name(&intf->dev, "%d-%d", hd->bus_id, interface_id);
 
-	retval = device_add(&intf->dev);
-	if (retval) {
-		pr_err("failed to add interface %u\n", interface_id);
-		goto free_intf;
+	intf->control = gb_control_create(intf);
+	if (!intf->control) {
+		put_device(&intf->dev);
+		return NULL;
 	}
 
 	spin_lock_irq(&gb_interfaces_lock);
@@ -118,10 +120,6 @@ struct gb_interface *gb_interface_create(struct gb_host_device *hd,
 	spin_unlock_irq(&gb_interfaces_lock);
 
 	return intf;
-
-free_intf:
-	put_device(&intf->dev);
-	return NULL;
 }
 
 /*
@@ -132,20 +130,22 @@ void gb_interface_remove(struct gb_interface *intf)
 	struct gb_bundle *bundle;
 	struct gb_bundle *next;
 
-	if (WARN_ON(!intf))
-		return;
+	if (intf->disconnected)
+		gb_control_disable(intf->control);
+
+	list_for_each_entry_safe(bundle, next, &intf->bundles, links)
+		gb_bundle_destroy(bundle);
+
+	if (device_is_registered(&intf->dev))
+		device_del(&intf->dev);
+
+	gb_control_disable(intf->control);
 
 	spin_lock_irq(&gb_interfaces_lock);
 	list_del(&intf->links);
 	spin_unlock_irq(&gb_interfaces_lock);
 
-	list_for_each_entry_safe(bundle, next, &intf->bundles, links)
-		gb_bundle_destroy(bundle);
-
-	if (intf->control)
-		gb_connection_destroy(intf->control->connection);
-
-	device_unregister(&intf->dev);
+	put_device(&intf->dev);
 }
 
 void gb_interfaces_remove(struct gb_host_device *hd)
@@ -165,26 +165,22 @@ void gb_interfaces_remove(struct gb_host_device *hd)
  */
 int gb_interface_init(struct gb_interface *intf, u8 device_id)
 {
+	struct gb_bundle *bundle, *tmp;
 	struct gb_connection *connection;
 	int ret, size;
 	void *manifest;
 
 	intf->device_id = device_id;
 
-	/* Establish control CPort connection */
-	connection = gb_connection_create_dynamic(intf, NULL,
-						GB_CONTROL_CPORT_ID,
-						GREYBUS_PROTOCOL_CONTROL);
-	if (!connection) {
-		dev_err(&intf->dev, "failed to create control connection\n");
-		return -ENOMEM;
-	}
+	/* Establish control connection */
+	ret = gb_control_enable(intf->control);
+	if (ret)
+		return ret;
 
 	/* Get manifest size using control protocol on CPort */
 	size = gb_control_get_manifest_size_operation(intf);
 	if (size <= 0) {
-		dev_err(&intf->dev, "%s: Failed to get manifest size (%d)\n",
-			__func__, size);
+		dev_err(&intf->dev, "failed to get manifest size: %d\n", size);
 		if (size)
 			return size;
 		else
@@ -198,7 +194,7 @@ int gb_interface_init(struct gb_interface *intf, u8 device_id)
 	/* Get manifest using control protocol on CPort */
 	ret = gb_control_get_manifest_operation(intf, manifest, size);
 	if (ret) {
-		dev_err(&intf->dev, "%s: Failed to get manifest\n", __func__);
+		dev_err(&intf->dev, "failed to get manifest: %d\n", ret);
 		goto free_manifest;
 	}
 
@@ -207,19 +203,36 @@ int gb_interface_init(struct gb_interface *intf, u8 device_id)
 	 * what's in it.
 	 */
 	if (!gb_manifest_parse(intf, manifest, size)) {
-		dev_err(&intf->dev, "%s: Failed to parse manifest\n", __func__);
+		dev_err(&intf->dev, "failed to parse manifest\n");
 		ret = -EINVAL;
 		goto free_manifest;
 	}
 
-	/*
-	 * XXX
-	 * We've successfully parsed the manifest.  Now we need to
-	 * allocate CPort Id's for connecting to the CPorts found on
-	 * other modules.  For each of these, establish a connection
-	 * between the local and remote CPorts (including
-	 * configuring the switch to allow them to communicate).
-	 */
+	/* Register the interface and its bundles. */
+	ret = device_add(&intf->dev);
+	if (ret) {
+		dev_err(&intf->dev, "failed to register interface: %d\n", ret);
+		goto free_manifest;
+	}
+
+	list_for_each_entry_safe_reverse(bundle, tmp, &intf->bundles, links) {
+		ret = gb_bundle_add(bundle);
+		if (ret) {
+			gb_bundle_destroy(bundle);
+			continue;
+		}
+
+		list_for_each_entry(connection, &bundle->connections,
+							bundle_links) {
+			ret = gb_connection_init(connection);
+			if (ret)
+				break;
+		}
+		if (ret)
+			gb_bundle_destroy(bundle);
+	}
+
+	ret = 0;
 
 free_manifest:
 	kfree(manifest);

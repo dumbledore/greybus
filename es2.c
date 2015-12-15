@@ -275,7 +275,7 @@ static struct urb *next_free_urb(struct es2_ap_dev *es2, gfp_t gfp_mask)
 	 * Crap, pool is empty, complain to the syslog and go allocate one
 	 * dynamically as we have to succeed.
 	 */
-	dev_err(&es2->usb_dev->dev,
+	dev_dbg(&es2->usb_dev->dev,
 		"No free CPort OUT urbs, having to dynamically allocate one!\n");
 	return usb_alloc_urb(0, gfp_mask);
 }
@@ -349,8 +349,7 @@ static int message_send(struct gb_host_device *hd, u16 cport_id,
 	 * the target CPort id before filling it in.
 	 */
 	if (!cport_id_valid(hd, cport_id)) {
-		dev_err(&udev->dev, "invalid destination cport 0x%02x\n",
-				cport_id);
+		dev_err(&udev->dev, "invalid cport %u\n", cport_id);
 		return -EINVAL;
 	}
 
@@ -471,8 +470,7 @@ static int latency_tag_enable(struct gb_host_device *hd, u16 cport_id)
 	struct usb_device *udev = es2->usb_dev;
 
 	if (!cport_id_valid(hd, cport_id)) {
-		dev_err(&udev->dev, "invalid destination cport 0x%02x\n",
-			cport_id);
+		dev_err(&udev->dev, "invalid cport %u\n", cport_id);
 		return -EINVAL;
 	}
 
@@ -495,8 +493,7 @@ static int latency_tag_disable(struct gb_host_device *hd, u16 cport_id)
 	struct usb_device *udev = es2->usb_dev;
 
 	if (!cport_id_valid(hd, cport_id)) {
-		dev_err(&udev->dev, "invalid destination cport 0x%02x\n",
-			cport_id);
+		dev_err(&udev->dev, "invalid cport %u\n", cport_id);
 		return -EINVAL;
 	}
 
@@ -687,7 +684,7 @@ static void cport_in_callback(struct urb *urb)
 		greybus_data_rcvd(hd, cport_id, urb->transfer_buffer,
 							urb->actual_length);
 	} else {
-		dev_err(dev, "invalid cport id 0x%02x received\n", cport_id);
+		dev_err(dev, "invalid cport id %u received\n", cport_id);
 	}
 exit:
 	/* put our urb back in the request pool */
@@ -899,6 +896,7 @@ static int ap_probe(struct usb_interface *interface,
 	int retval = -ENOMEM;
 	int i;
 	int num_cports;
+	int cport_id;
 
 	udev = usb_get_dev(interface_to_usbdev(interface));
 
@@ -916,6 +914,14 @@ static int ap_probe(struct usb_interface *interface,
 		usb_put_dev(udev);
 		return PTR_ERR(hd);
 	}
+
+	/*
+	 * CPorts 16 and 17 are reserved for CDSI0 and CDSI1, make sure they
+	 * won't be allocated dynamically.
+	 */
+	do {
+		cport_id = ida_simple_get(&hd->cport_id_map, 16, 18, GFP_KERNEL);
+	} while (cport_id > 0);
 
 	es2 = hd_to_es2(hd);
 	es2->hd = hd;
