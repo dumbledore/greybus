@@ -13,6 +13,7 @@
 
 #include "audio_codec.h"
 #include "audio_apbridgea.h"
+#include "gb_audio_manager.h"
 
 #define GB_AUDIO_MGMT_DRIVER_NAME	"gb_audio_mgmt"
 #define GB_AUDIO_DATA_DRIVER_NAME	"gb_audio_data"
@@ -576,6 +577,7 @@ static int gbaudio_codec_probe(struct gb_connection *connection)
 	int ret, i;
 	struct gbaudio_codec_info *gbcodec;
 	struct gb_audio_topology *topology;
+	struct gb_audio_manager_module_descriptor desc;
 	struct device *dev = &connection->bundle->dev;
 	int dev_id = connection->bundle->id;
 
@@ -638,6 +640,21 @@ static int gbaudio_codec_probe(struct gb_connection *connection)
 	mutex_lock(&gbcodec->lock);
 	gbcodec->codec_registered = 1;
 
+	/* inform above layer for uevent */
+	if (!gbcodec->set_uevent &&
+	    (gbcodec->dai_added == gbcodec->num_dais)) {
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 1);
+		/* prepare for the audio manager */
+		strlcpy(desc.name, gbcodec->name,
+			GB_AUDIO_MANAGER_MODULE_NAME_LEN); /* todo */
+		desc.slot = 1; /* todo */
+		desc.vid = 2; /* todo */
+		desc.pid = 3; /* todo */
+		desc.cport = gbcodec->dev_id;
+		desc.devices = 0x2; /* todo */
+		gbcodec->manager_id = gb_audio_manager_add(&desc);
+		gbcodec->set_uevent = 1;
+	}
 	mutex_unlock(&gbcodec->lock);
 
 	return ret;
@@ -667,6 +684,16 @@ static void gbaudio_codec_remove(struct gb_connection *connection)
 	gbcodec = gbaudio_find_codec(dev, dev_id);
 	if (!gbcodec)
 		return;
+
+	/* inform uevent to above layers */
+	mutex_lock(&gbcodec->lock);
+	if (gbcodec->set_uevent) {
+		/* notify the audio manager */
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 0);
+		gb_audio_manager_remove(gbcodec->manager_id);
+		gbcodec->set_uevent = 0;
+	}
+	mutex_unlock(&gbcodec->lock);
 
 	msm8994_remove_dailink("msm8994-tomtom-mtp-snd-card", &gbaudio_dailink,
 			       1);
@@ -711,6 +738,7 @@ static int gbaudio_dai_probe(struct gb_connection *connection)
 	struct device *dev = &connection->bundle->dev;
 	int dev_id = connection->bundle->id;
 	struct gbaudio_codec_info *gbcodec = dev_get_drvdata(dev);
+	struct gb_audio_manager_module_descriptor desc;
 
 	dev_dbg(dev, "Add DAI device:%d:%s\n", dev_id, dev_name(dev));
 
@@ -728,6 +756,22 @@ static int gbaudio_dai_probe(struct gb_connection *connection)
 	/* update dai_added count */
 	mutex_lock(&gbcodec->lock);
 	gbcodec->dai_added++;
+
+	/* inform above layer for uevent */
+	if (!gbcodec->set_uevent && gbcodec->codec_registered &&
+	    (gbcodec->dai_added == gbcodec->num_dais)) {
+		/* prepare for the audio manager */
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 1);
+		strlcpy(desc.name, gbcodec->name,
+			GB_AUDIO_MANAGER_MODULE_NAME_LEN); /* todo */
+		desc.slot = 1; /* todo */
+		desc.vid = 2; /* todo */
+		desc.pid = 3; /* todo */
+		desc.cport = gbcodec->dev_id;
+		desc.devices = 0x2; /* todo */
+		gbcodec->manager_id = gb_audio_manager_add(&desc);
+		gbcodec->set_uevent = 1;
+	}
 	mutex_unlock(&gbcodec->lock);
 
 	return 0;
@@ -748,6 +792,12 @@ static void gbaudio_dai_remove(struct gb_connection *connection)
 
 	/* inform uevent to above layers */
 	mutex_lock(&gbcodec->lock);
+	if (gbcodec->set_uevent) {
+		/* notify the audio manager */
+		dev_dbg(dev, "Inform set_event:%d to above layer\n", 0);
+		gb_audio_manager_remove(gbcodec->manager_id);
+		gbcodec->set_uevent = 0;
+	}
 	/* update dai_added count */
 	gbcodec->dai_added--;
 	mutex_unlock(&gbcodec->lock);
